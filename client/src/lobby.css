@@ -167,3 +167,30 @@
   color: #fff; border-radius: 6px; padding: 5px 6px; font-size: 0.85rem;
 }
 .rtm-card-btn:disabled { opacity: 0.35; pointer-events: none; }
+
+/* ---- budgets on team cards ---- */
+.purse-bar { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.08); margin: 4px 0 6px; overflow: hidden; }
+.purse-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent3), var(--gold)); transition: width .5s; }
+.squad-ok { color: var(--accent3); }
+
+/* ---- finished / results ---- */
+.squad-status { list-style: none; margin: 18px 0; text-align: left; }
+.squad-status li { display: flex; align-items: center; gap: 12px; padding: 7px 4px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.9rem; }
+.ss-owner { flex: 1; color: var(--text-dim); }
+.ss-count.ok { color: var(--accent3); }
+.ss-xi { font-family: var(--font-heading); font-size: 0.7rem; color: var(--gold); }
+.ended-actions { display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 8px; }
+.ended-actions .btn-primary { max-width: 320px; }
+.results-box.wide { max-width: 860px; width: 100%; }
+.table-scroll { overflow-x: auto; margin-top: 14px; }
+.results-table th, .results-table td { padding: 8px 6px; font-size: 0.82rem; white-space: nowrap; }
+.results-table tr.winner-row td { background: rgba(255,215,0,0.1); }
+.results-table .notes-row td { text-align: left; white-space: normal; background: rgba(0,0,0,0.25); }
+.notes-row ul { list-style: none; margin-bottom: 8px; font-size: 0.8rem; color: var(--text-dim); }
+.notes-row li { padding: 2px 0; }
+.results-foot { margin-top: 10px; font-size: 0.75rem; color: var(--text-dim); }
+
+/* ---- player images + real IPL 2026 stats ---- */
+.pavatar { border-radius: 50%; object-fit: cover; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0; }
+.stats-season { grid-column: 1 / -1; font-family: var(--font-heading); font-size: 0.62rem; letter-spacing: 2px; color: var(--gold); text-align: center; padding-bottom: 4px; }
+.pavatar-text { display: inline-flex; align-items: center; justify-content: center; color: var(--accent); font-family: var(--font-heading); font-weight: 700; }

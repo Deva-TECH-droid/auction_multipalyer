@@ -35,25 +35,23 @@ export const cr = (n) => `₹${Number(n).toFixed(2)} Cr`;
 export const avatarFallback = (name, size = 64) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&size=${size}`;
 
-// Team Power Rating — same formula as the original updatePowerStats()
+// Team Power Rating (display only) — based on each player's role and star rating (base price),
+// never on invented statistics. The official 30-mark result is computed on the server.
+const quality = (base) => 0.3 + (0.7 * (base - 0.2)) / 1.8;
 export function powerStats(xiIds, catalogById) {
-  let batScore = 0;
-  let bowlScore = 0;
+  const bats = [];
+  const bowls = [];
   for (const id of xiIds) {
     const p = catalogById[id];
     if (!p) continue;
-    const wk = p.stats.wkts !== "—" ? Number(p.stats.wkts) : 0;
-    if (["Batsman", "Wicketkeeper"].includes(p.role)) {
-      batScore += Math.min(100, p.stats.runs / 40 + parseFloat(p.stats.sr) / 1.5);
-    } else if (p.role === "Bowler") {
-      bowlScore += Math.min(100, wk / 1.2);
-    } else {
-      batScore += Math.min(50, p.stats.runs / 40);
-      bowlScore += Math.min(50, wk / 1.2);
-    }
+    const q = quality(p.base);
+    if (p.role === "Batsman" || p.role === "Wicketkeeper") bats.push(q);
+    else if (p.role === "All-Rounder") { bats.push(0.85 * q); bowls.push(0.85 * q); }
+    else { bowls.push(q); bats.push(0.2 * q); }
   }
-  const bat = Math.min(100, (batScore / 700) * 100);
-  const bowl = Math.min(100, (bowlScore / 700) * 100);
+  const top = (a, n) => [...a].sort((x, y) => y - x).slice(0, n).reduce((x, y) => x + y, 0) / n;
+  const bat = Math.min(100, top(bats, 6) * 100);
+  const bowl = Math.min(100, top(bowls, 5) * 100);
   return { bat, bowl, balance: (bat + bowl) / 2 };
 }
 

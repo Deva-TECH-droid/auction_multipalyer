@@ -1,0 +1,196 @@
+/* ============================================================
+   WINNER CELEBRATION — full-screen CSS 3D scene
+   cube with team logo · orbiting stars · 3D extruded title
+   ============================================================ */
+.cele-root {
+  position: fixed; inset: 0; z-index: 10000; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--glow) 30%, #05070f) 0%, #03050c 62%, #000 100%);
+  display: flex; align-items: center; justify-content: center;
+  perspective: 1400px; color: #fff;
+  animation: celeIn .5s ease-out both;
+}
+@keyframes celeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.cele-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
+
+/* rotating stadium light beams */
+.cele-beams {
+  position: absolute; left: 50%; top: 38%; width: 190vmax; height: 190vmax; z-index: 0;
+  transform: translate(-50%, -50%); border-radius: 50%; opacity: .55;
+  background: conic-gradient(from 0deg,
+    transparent 0 8deg, color-mix(in srgb, var(--glow) 55%, transparent) 10deg, transparent 14deg 40deg,
+    rgba(255,255,255,.18) 42deg, transparent 46deg 90deg, color-mix(in srgb, var(--glow) 45%, transparent) 92deg, transparent 97deg 150deg,
+    rgba(255,255,255,.14) 152deg, transparent 156deg 220deg, color-mix(in srgb, var(--glow) 50%, transparent) 224deg, transparent 229deg 290deg,
+    rgba(255,255,255,.16) 292deg, transparent 297deg 360deg);
+  animation: beamSpin 18s linear infinite;
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 62%);
+          mask-image: radial-gradient(circle, #000 0%, transparent 62%);
+}
+@keyframes beamSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* perspective grid floor */
+.cele-floor {
+  position: absolute; left: -50%; right: -50%; bottom: -8%; height: 55%; z-index: 0;
+  transform: rotateX(72deg); transform-origin: 50% 100%; opacity: .5;
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--glow) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--glow) 60%, transparent) 1px, transparent 1px);
+  background-size: 70px 70px;
+  animation: floorMove 2.4s linear infinite;
+  -webkit-mask-image: linear-gradient(to top, #000, transparent 85%);
+          mask-image: linear-gradient(to top, #000, transparent 85%);
+}
+@keyframes floorMove { to { background-position: 0 70px, 0 0; } }
+
+/* ---- suspense ---- */
+.cele-suspense { position: relative; z-index: 4; text-align: center; transform-style: preserve-3d; }
+.cele-drum {
+  font-family: var(--font-heading, 'Orbitron', sans-serif); font-weight: 900;
+  font-size: clamp(1.4rem, 5vw, 3.4rem); letter-spacing: .25em; padding-left: .25em;
+  text-shadow: 0 0 25px var(--glow), 0 0 60px var(--glow);
+  animation: drumPulse .55s ease-in-out infinite alternate;
+}
+@keyframes drumPulse {
+  from { transform: scale(.96) rotateX(8deg); opacity: .75; }
+  to   { transform: scale(1.05) rotateX(-4deg); opacity: 1; }
+}
+.cele-dots { margin-top: 22px; font-size: 1.6rem; color: var(--glow); letter-spacing: 14px; }
+.cele-dots span { display: inline-block; animation: dotBounce .9s ease-in-out infinite; }
+.cele-dots span:nth-child(2) { animation-delay: .15s; }
+.cele-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes dotBounce { 0%, 100% { transform: translateY(0); opacity: .4; } 50% { transform: translateY(-14px); opacity: 1; } }
+.cele-skip {
+  position: absolute; right: 22px; bottom: 22px; z-index: 6; cursor: pointer;
+  background: rgba(255,255,255,.08); color: #fff; border: 1px solid rgba(255,255,255,.25);
+  border-radius: 20px; padding: 6px 14px; font-size: .8rem;
+}
+
+/* ---- reveal ---- */
+.cele-flash { position: absolute; inset: 0; z-index: 5; background: #fff; pointer-events: none; animation: flash 1s ease-out forwards; }
+@keyframes flash { from { opacity: .95; } to { opacity: 0; } }
+
+.cele-stage {
+  position: relative; z-index: 4; width: min(980px, 96vw); max-height: 100vh; overflow-y: auto; padding: 10px 12px 26px;
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  transform-style: preserve-3d;
+}
+
+.cele-scene {
+  position: relative; width: 100%; height: clamp(250px, 40vh, 380px);
+  display: flex; align-items: center; justify-content: center;
+  transform-style: preserve-3d; transform: rotateX(-10deg);
+  animation: sceneIn 1.6s cubic-bezier(.2,1.2,.3,1) both;
+}
+@keyframes sceneIn { from { transform: rotateX(-10deg) rotateY(-540deg) scale(.05); opacity: 0; } to { transform: rotateX(-10deg) rotateY(0) scale(1); opacity: 1; } }
+
+/* 3D cube carrying the franchise logo on every face */
+.cele-cube {
+  --s: clamp(120px, 20vmin, 190px);
+  position: relative; width: var(--s); height: var(--s); transform-style: preserve-3d;
+  animation: cubeSpin 11s linear infinite;
+}
+@keyframes cubeSpin {
+  from { transform: rotateX(-18deg) rotateY(0deg); }
+  to   { transform: rotateX(-18deg) rotateY(360deg); }
+}
+.cele-face {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(255,255,255,.22), rgba(255,255,255,.05));
+  border: 2px solid var(--glow); border-radius: 10px;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--glow) 55%, transparent), inset 0 0 40px color-mix(in srgb, var(--glow) 35%, transparent);
+  backdrop-filter: blur(2px);
+}
+.cele-face img { width: 72%; height: 72%; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0,0,0,.6)); }
+.cele-face.front  { transform: translateZ(calc(var(--s) / 2)); }
+.cele-face.back   { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
+.cele-face.right  { transform: rotateY(90deg)  translateZ(calc(var(--s) / 2)); }
+.cele-face.left   { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
+.cele-face.top    { transform: rotateX(90deg)  translateZ(calc(var(--s) / 2)); }
+.cele-face.bottom { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
+
+/* ring of stars orbiting the cube */
+.cele-orbit { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform-style: preserve-3d; animation: orbit 9s linear infinite reverse; }
+@keyframes orbit { from { transform: rotateX(68deg) rotateZ(0deg); } to { transform: rotateX(68deg) rotateZ(360deg); } }
+.cele-star {
+  position: absolute; left: 0; top: 0; font-size: clamp(1.2rem, 3.4vmin, 2rem);
+  transform: rotateZ(var(--a)) translateX(clamp(150px, 27vmin, 250px)) rotateZ(calc(-1 * var(--a))) rotateX(-68deg);
+  filter: drop-shadow(0 0 10px var(--glow));
+}
+
+/* floating trophy above the cube */
+.cele-trophy {
+  position: absolute; top: -2%; left: 50%; font-size: clamp(3rem, 11vmin, 6rem); transform: translateX(-50%) translateZ(120px);
+  filter: drop-shadow(0 0 24px var(--glow)) drop-shadow(0 14px 10px rgba(0,0,0,.6));
+  animation: trophyFloat 2.6s ease-in-out infinite;
+}
+@keyframes trophyFloat { 0%, 100% { transform: translateX(-50%) translateZ(120px) translateY(0) rotateY(-12deg); } 50% { transform: translateX(-50%) translateZ(120px) translateY(-14px) rotateY(12deg); } }
+
+/* 3D extruded title */
+.cele-title {
+  font-family: var(--font-heading, 'Orbitron', sans-serif); font-weight: 900;
+  font-size: clamp(2.2rem, 9vw, 5.6rem); letter-spacing: .06em; line-height: 1; margin: 6px 0 6px;
+  transform: perspective(900px) rotateX(18deg); transform-style: preserve-3d;
+}
+.cele-title span {
+  display: inline-block; color: #fff8d6; opacity: 0;
+  text-shadow:
+    0 1px 0 #e6b800, 0 2px 0 #d9a900, 0 3px 0 #cc9b00, 0 4px 0 #bf8e00, 0 5px 0 #b38200,
+    0 6px 0 #a67600, 0 7px 0 #996b00, 0 8px 0 #8c6000, 0 9px 0 #7f5500,
+    0 12px 18px rgba(0,0,0,.65), 0 0 30px var(--glow), 0 0 70px var(--glow);
+  animation: letterDrop .8s cubic-bezier(.2,1.5,.4,1) forwards, letterWave 3s ease-in-out 1.6s infinite;
+}
+@keyframes letterDrop { from { opacity: 0; transform: translateY(-160px) translateZ(300px) rotateX(90deg); } to { opacity: 1; transform: none; } }
+@keyframes letterWave { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+.cele-team {
+  font-family: var(--font-heading, 'Orbitron', sans-serif); font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  font-size: clamp(1rem, 3.6vw, 2rem); color: var(--glow);
+  text-shadow: 0 0 18px var(--glow); animation: riseIn .8s .9s both;
+}
+.cele-owner {
+  margin: 8px 0 2px; font-family: var(--font-heading, 'Orbitron', sans-serif); font-weight: 900;
+  font-size: clamp(1.4rem, 5.4vw, 3.2rem); letter-spacing: .08em;
+  background: linear-gradient(90deg, #fff6c2, #ffd400, #fff6c2); background-size: 200% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 14px rgba(255,212,0,.6));
+  animation: riseIn .8s 1.1s both, shine 3s linear infinite;
+}
+@keyframes shine { to { background-position: -200% 0; } }
+.cele-score { font-family: var(--font-heading, 'Orbitron', sans-serif); font-weight: 900; font-size: clamp(1.6rem, 5vw, 2.8rem); color: #fff; animation: riseIn .8s 1.3s both; text-shadow: 0 0 20px var(--glow); }
+.cele-score small { font-size: .5em; opacity: .7; }
+@keyframes riseIn { from { opacity: 0; transform: translateY(40px) scale(.9); } to { opacity: 1; transform: none; } }
+
+.cele-marks {
+  width: min(560px, 92%); margin: 14px 0 18px; display: grid; gap: 7px; animation: riseIn .8s 1.5s both;
+  background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.15); border-radius: 14px; padding: 12px 16px;
+  backdrop-filter: blur(6px);
+}
+.cele-mark { display: grid; grid-template-columns: 96px 1fr 34px; gap: 10px; align-items: center; font-size: .78rem; text-align: left; }
+.cele-mark span { color: rgba(255,255,255,.75); }
+.cele-mark b { text-align: right; color: #fff; }
+.cele-bar { height: 7px; border-radius: 6px; background: rgba(255,255,255,.12); overflow: hidden; }
+.cele-bar i { display: block; height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--glow), #fff); box-shadow: 0 0 12px var(--glow); animation: barGrow 1.2s 1.8s both ease-out; }
+@keyframes barGrow { from { width: 0 !important; } }
+
+.cele-btn {
+  cursor: pointer; border: 1px solid var(--glow); color: #fff; background: color-mix(in srgb, var(--glow) 25%, rgba(0,0,0,.6));
+  border-radius: 30px; padding: 12px 28px; font-family: var(--font-heading, 'Orbitron', sans-serif); font-weight: 700; letter-spacing: .12em;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--glow) 55%, transparent); animation: riseIn .8s 1.9s both;
+}
+.cele-btn:hover { background: var(--glow); color: #000; }
+
+@media (max-width: 600px) {
+  .cele-mark { grid-template-columns: 82px 1fr 30px; }
+  .cele-scene { height: 250px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cele-beams, .cele-floor, .cele-cube, .cele-orbit { animation: none; }
+}
+
+/* squad strip + audio controls */
+.cele-squad { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 4px 0 16px; width: min(760px, 94%); animation: riseIn .8s 1.7s both; }
+.cele-player { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 78px; font-size: .66rem; color: rgba(255,255,255,.85); }
+.cele-player .pavatar { border: 2px solid var(--glow); box-shadow: 0 0 14px color-mix(in srgb, var(--glow) 55%, transparent); }
+.cele-audio { position: absolute; left: 70px; bottom: 18px; z-index: 7; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.2); border-radius: 24px; padding: 5px 12px; }
+.cele-audio button { background: none; border: none; color: #fff; font-size: 1.05rem; cursor: pointer; }
+.cele-audio input { width: 90px; accent-color: var(--glow); }

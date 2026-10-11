@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import { useCountdown, useGame } from "../hooks/GameContext";
 import { avatarFallback, getFlag, roleColor } from "../lib/helpers";
 
+const show = (v, d) => (v === null || v === undefined ? "—" : d !== undefined && typeof v === "number" ? v.toFixed(d) : v);
 const STAT_FIELDS = [
-  ["Mat", "matches"], ["Runs", "runs"], ["Avg", "avg"], ["S.R.", "sr"],
-  ["H.S.", "hs"], ["Wkts", "wkts"], ["Eco", "eco"], ["Best", "best"],
+  ["Mat", "mat"], ["Runs", "runs", 0], ["Avg", "avg", 2], ["S.R.", "sr", 2],
+  ["H.S.", "hs"], ["Wkts", "wkts"], ["Eco", "eco", 2], ["Best", "best"],
 ];
 
 // The live auction card — same markup/classes as the original #auction-card.
@@ -123,10 +124,13 @@ export default function AuctionCard() {
         </div>
 
         <div className="performance-stats glass-panel">
-          {STAT_FIELDS.map(([label, key]) => (
+          <div className="stats-season">
+            {player.stats ? "📊 IPL 2026 SEASON" : "📊 IPL 2026 stats not available for this player"}
+          </div>
+          {player.stats && STAT_FIELDS.map(([label, key, d]) => (
             <div className="p-stat" key={key}>
               <span className="p-label">{label}</span>
-              <span className="p-val">{player.stats[key]}</span>
+              <span className="p-val">{show(player.stats[key], d)}</span>
             </div>
           ))}
         </div>

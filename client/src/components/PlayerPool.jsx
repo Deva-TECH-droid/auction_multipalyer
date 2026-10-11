@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useGame } from "../hooks/GameContext";
 import { getFlag, getRoleShort, getRoleTagClass } from "../lib/helpers";
+import PlayerAvatar from "./PlayerAvatar";
 
 const FILTERS = [
   ["all", "All"], ["Grade A", "Grade A"], ["Grade B", "Grade B"],
@@ -59,10 +60,10 @@ export default function PlayerPool() {
             key={p.id}
             className={`player-item${soldIds.has(p.id) ? " sold" : ""}${unsold.has(p.id) ? " unsold" : ""}${onBlock === p.id ? " on-block" : ""}`}
           >
-            <div className="player-avatar-sm">{getFlag(p.country)}</div>
+            <PlayerAvatar name={p.name} size={36} />
             <div className="player-item-info">
               <div className="player-item-name">{p.name}</div>
-              <div className="player-item-meta">{p.country} · ₹{p.base} Cr{unsold.has(p.id) ? " · unsold" : ""}</div>
+              <div className="player-item-meta">{getFlag(p.country)} {p.country} · ₹{p.base} Cr{unsold.has(p.id) ? " · unsold" : ""}</div>
             </div>
             <span className={`player-role-tag ${getRoleTagClass(p.role)}`}>{getRoleShort(p.role)}</span>
           </li>

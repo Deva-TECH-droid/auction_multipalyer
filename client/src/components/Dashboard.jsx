@@ -4,20 +4,22 @@ import AuctionCard from "./AuctionCard";
 import PlayerPool from "./PlayerPool";
 import TeamsPanel from "./TeamsPanel";
 import TeamModal from "./TeamModal";
-import Results from "./Results";
+import ResultsBoard, { EndedPanel } from "./Results";
+import Celebration from "./Celebration";
 import NewsModal from "./NewsModal";
 import ScheduleModal from "./ScheduleModal";
 import SquadsModal from "./SquadsModal";
 
 // Main auction screen — same 3-column layout as the original #dashboard-screen.
 export default function Dashboard() {
-  const { room, you, myTeam, isHost, actions, toast } = useGame();
+  const { room, you, myTeam, isHost, actions, toast, celebrating, setCelebrating, catalogById } = useGame();
   const [teamId, setTeamId] = useState(null);
   const [modal, setModal] = useState(null); // news | schedule | squads
   const [copied, setCopied] = useState(false);
 
   const a = room.auction;
-  const ended = room.status === "ended";
+  const live = room.status === "auction";
+  const winner = room.results?.rankings.find((r) => r.teamId === room.results.winnerTeamId);
   const me = room.players.find((p) => p.id === you);
 
   const copyCode = async () => {
@@ -81,9 +83,11 @@ export default function Dashboard() {
         <PlayerPool />
 
         <section className="panel-stage">
-          {ended ? <Results onOpenTeam={setTeamId} /> : <AuctionCard />}
+          {live && <AuctionCard />}
+          {room.status === "ended" && <EndedPanel onOpenTeam={setTeamId} />}
+          {room.status === "results" && <ResultsBoard onOpenTeam={setTeamId} />}
 
-          {isHost && !ended && (
+          {isHost && live && (
             <div className="host-bar glass-panel">
               <span className="host-label">👑 HOST</span>
               {a.phase === "bidding" && (
@@ -106,6 +110,7 @@ export default function Dashboard() {
         <TeamsPanel onOpenTeam={setTeamId} />
       </div>
 
+      {celebrating && winner && <Celebration winner={winner} squad={winner.xi.map((id) => catalogById[id]).filter(Boolean)} onClose={() => setCelebrating(false)} />}
       {teamId && <TeamModal teamId={teamId} onClose={() => setTeamId(null)} />}
       {modal === "news" && (
         <NewsModal

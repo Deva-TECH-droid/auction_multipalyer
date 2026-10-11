@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useGame } from "../hooks/GameContext";
 import { getRoleShort, powerStats } from "../lib/helpers";
+import PlayerAvatar from "./PlayerAvatar";
 
 // Team details: squad pool, drag-and-drop Playing XI (owner only) and power rating.
 export default function TeamModal({ teamId, onClose }) {
@@ -9,7 +10,7 @@ export default function TeamModal({ teamId, onClose }) {
   const [over, setOver] = useState(null);
   if (!team) return null;
 
-  const editable = myTeam?.id === team.id;
+  const editable = myTeam?.id === team.id && room.status !== "results";
   const xi = team.playingEleven;
   const squad = team.purchased.filter((p) => !xi.includes(p.playerId));
   const xiPlayers = xi.map((id) => team.purchased.find((p) => p.playerId === id)).filter(Boolean);
@@ -53,6 +54,7 @@ export default function TeamModal({ teamId, onClose }) {
       style={editable ? undefined : { cursor: "default" }}
     >
       <span className="drag-icon">⠿</span>
+      <PlayerAvatar name={p.name} size={30} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: "0.85rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {p.name}{p.isRetention ? " ⓡ" : ""}{p.isRTM ? " ⚡" : ""}

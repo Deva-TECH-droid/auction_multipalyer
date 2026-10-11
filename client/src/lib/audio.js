@@ -6,7 +6,7 @@ const url = (file) => encodeURI(`/sounds/${file}`);
 
 export function setMuted(m) {
   muted = m;
-  if (m) stopAudio();
+  if (m) { stopAudio(); stopCelebration(); }
 }
 export const isMuted = () => muted;
 
@@ -71,4 +71,43 @@ export function playAuctionStartSequence() {
       clap.onended = () => { if (currentAudio === clap) stopAudio(); };
     };
   }, 8000);
+}
+
+// ─── Winner celebration: crowd roar while suspense builds, then the team's FULL anthem ───
+let celeAudio = [];
+export function startCrowd() {
+  stopAudio();
+  if (muted) return;
+  const crowd = new Audio(url("people.mp3"));
+  crowd.loop = true;
+  crowd._base = 0.5;
+  crowd.volume = 0.5 * celeVolume;
+  crowd.play().catch(() => {});
+  celeAudio.push(crowd);
+}
+export function playWinnerTheme(teamId) {
+  if (muted) return;
+  const theme = new Audio(url(teamId === "dc" ? "dc (2).mp3" : `${teamId}.mp3`));
+  theme._base = 0.9;
+  theme.volume = 0.9 * celeVolume;
+  theme.play().catch(() => {});
+  const clap = new Audio(url("clapping.mp3"));
+  clap.loop = true;
+  clap._base = 0.35;
+  clap.volume = 0.35 * celeVolume;
+  clap.play().catch(() => {});
+  celeAudio.push(theme, clap);
+}
+export function stopCelebration() {
+  celeAudio.forEach((a) => { a.pause(); a.currentTime = 0; });
+  celeAudio = [];
+}
+
+let celeVolume = 1;
+export function setCelebrationVolume(v) {
+  celeVolume = v;
+  celeAudio.forEach((a) => { a.volume = Math.min(1, (a._base || 0.6) * v); });
+}
+export function pauseCelebration(paused) {
+  celeAudio.forEach((a) => { if (paused) a.pause(); else a.play().catch(() => {}); });
 }

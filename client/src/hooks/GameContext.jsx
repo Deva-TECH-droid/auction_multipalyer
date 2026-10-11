@@ -27,6 +27,7 @@ export function GameProvider({ children }) {
   const [you, setYou] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [songBanner, setSongBanner] = useState(null);
+  const [celebrating, setCelebrating] = useState(false);
   const [pulse, setPulse] = useState(null);
   const [rejoining, setRejoining] = useState(!!LS.get("ipl.room"));
   const clockOffset = useRef(0); // server clock minus local clock
@@ -154,8 +155,17 @@ export function GameProvider({ children }) {
           toast("▶ Auction resumed.", "info");
           break;
         case "ended":
-          toast("🎉 All done! Auction Complete.", "gold");
+          toast(
+            e.reason === "squads-complete"
+              ? "✅ Every franchise has 15 players — auction finished!"
+              : "🎉 Auction complete!",
+            "gold"
+          );
           playIPLTheme();
+          break;
+        case "results":
+          stopAudio();
+          setCelebrating(true);
           break;
         default:
       }
@@ -184,6 +194,7 @@ export function GameProvider({ children }) {
     skip: () => emit("auction:skip"),
     pause: (paused) => emit("auction:pause", { paused }),
     endAuction: () => emit("auction:end"),
+    showResults: () => emit("auction:results"),
     setXI: (ids) => emit("xi:set", { ids }),
     logout() {
       stopAudio();
@@ -197,7 +208,7 @@ export function GameProvider({ children }) {
 
   const value = {
     conn, name, room, catalog, catalogById, you, myTeam, isHost,
-    toasts, songBanner, pulse, serverNow, actions, toast,
+    toasts, songBanner, pulse, serverNow, actions, toast, celebrating, setCelebrating,
     rejoining,
   };
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

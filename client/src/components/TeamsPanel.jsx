@@ -32,7 +32,12 @@ export default function TeamsPanel({ onOpenTeam }) {
                 </div>
               </div>
               <div className="team-purse">₹{t.remaining.toFixed(2)} Cr left</div>
-              <div className="team-squad-count">👥 {t.purchased.length} player{t.purchased.length === 1 ? "" : "s"}{t.rtmCards > 0 && t.ownerId ? " · ⚡RTM" : ""}</div>
+              <div className="purse-bar"><i style={{ width: `${Math.max(0, Math.min(100, t.remaining))}%` }} /></div>
+              <div className="team-squad-count">
+                👥 <b className={t.purchased.length >= room.limits.minSquad ? "squad-ok" : ""}>{t.purchased.length}</b>/{room.limits.minSquad}
+                {" · ✈ "}{t.purchased.filter((p) => p.country !== "India").length}
+                {t.rtmCards > 0 && t.ownerId ? " · ⚡RTM" : ""}
+              </div>
             </div>
           );
         })}
