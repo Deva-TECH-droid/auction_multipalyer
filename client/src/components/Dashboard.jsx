@@ -1,0 +1,121 @@
+import React, { useState } from "react";
+import { useGame } from "../hooks/GameContext";
+import AuctionCard from "./AuctionCard";
+import PlayerPool from "./PlayerPool";
+import TeamsPanel from "./TeamsPanel";
+import TeamModal from "./TeamModal";
+import Results from "./Results";
+import NewsModal from "./NewsModal";
+import ScheduleModal from "./ScheduleModal";
+import SquadsModal from "./SquadsModal";
+
+// Main auction screen — same 3-column layout as the original #dashboard-screen.
+export default function Dashboard() {
+  const { room, you, myTeam, isHost, actions, toast } = useGame();
+  const [teamId, setTeamId] = useState(null);
+  const [modal, setModal] = useState(null); // news | schedule | squads
+  const [copied, setCopied] = useState(false);
+
+  const a = room.auction;
+  const ended = room.status === "ended";
+  const me = room.players.find((p) => p.id === you);
+
+  const copyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(room.code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { toast(`Room code: ${room.code}`, "info"); }
+  };
+
+  const endAuction = () => {
+    if (window.confirm("End the auction now? Remaining players will stay unsold.")) actions.endAuction();
+  };
+
+  const leave = () => {
+    if (window.confirm("Leave the auction? Your franchise stays reserved — you can rejoin from this device with the same room code.")) {
+      actions.logout();
+    }
+  };
+
+  return (
+    <div id="dashboard-screen" className="screen">
+      <header className="top-bar">
+        <div className="logo-area">
+          <img src="/images/ipl.webp" className="header-logo" alt="IPL" />
+          <div className="logo-mini">IPL 2026</div>
+          <button className="room-chip" onClick={copyCode} title="Copy room code">
+            {copied ? "✅ COPIED" : `ROOM ${room.code}`}
+          </button>
+        </div>
+
+        <div className="sold-players-marquee">
+          <div className="marquee-content" id="sold-players-rail">
+            {room.soldLog.length === 0 && (
+              <span className="sold-item-placeholder">🏏 Auction Live — Sold Players will appear here...</span>
+            )}
+            {room.soldLog.map((s, i) => (
+              <span key={`${s.name}-${i}`} className={`sold-item ${s.teamId}-color`}>
+                🔨 <strong>{s.name}</strong>
+                <span style={{ color: "var(--gold)", margin: "0 4px" }}>₹{s.price.toFixed(2)} Cr</span>
+                → {s.teamName}
+                <span style={{ opacity: 0.4, margin: "0 15px" }}>|</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="user-profile">
+          <button
+            id="news-btn" className="btn-small" onClick={() => setModal("news")}
+            style={{ background: "linear-gradient(135deg, rgba(0,229,255,0.1), rgba(0,229,255,0.05))", borderColor: "rgba(0,229,255,0.3)", color: "var(--accent)" }}
+          >
+            📰 IPL 2026 News
+          </button>
+          <span id="user-display">{me?.name}{myTeam ? ` (${myTeam.name})` : ""}</span>
+          <button id="logout-btn" className="btn-small" onClick={leave}>Logout</button>
+        </div>
+      </header>
+
+      <div className="content-grid">
+        <PlayerPool />
+
+        <section className="panel-stage">
+          {ended ? <Results onOpenTeam={setTeamId} /> : <AuctionCard />}
+
+          {isHost && !ended && (
+            <div className="host-bar glass-panel">
+              <span className="host-label">👑 HOST</span>
+              {a.phase === "bidding" && (
+                <button className="btn-small" onClick={() => actions.pause(!a.paused)}>
+                  {a.paused ? "▶ Resume" : "⏸ Pause"}
+                </button>
+              )}
+              {a.phase === "intro" && (
+                <button className="btn-small" onClick={actions.skip}>⏭ Skip intro</button>
+              )}
+              {(a.phase === "bidding" || a.phase === "rtm") && (
+                <button className="btn-small" onClick={actions.skip}>⏭ Force finalize</button>
+              )}
+              <button className="btn-small danger" onClick={endAuction}>⏹ End auction</button>
+              <span className="host-progress">{a.queueRemaining} left in queue</span>
+            </div>
+          )}
+        </section>
+
+        <TeamsPanel onOpenTeam={setTeamId} />
+      </div>
+
+      {teamId && <TeamModal teamId={teamId} onClose={() => setTeamId(null)} />}
+      {modal === "news" && (
+        <NewsModal
+          onClose={() => setModal(null)}
+          onOpenSchedule={() => setModal("schedule")}
+          onOpenSquads={() => setModal("squads")}
+        />
+      )}
+      {modal === "schedule" && <ScheduleModal onClose={() => setModal(null)} />}
+      {modal === "squads" && <SquadsModal onClose={() => setModal(null)} />}
+    </div>
+  );
+}
