@@ -111,6 +111,7 @@ io.on("connection", (socket) => {
   socket.on("auction:rtmFinal", (p = {}) => act((room, me) => room.rtmFinal(me.id, !!p.match)));
   socket.on("auction:skip", () => act((room, me) => room.skip(me.id)));
   socket.on("auction:pause", (p = {}) => act((room, me) => room.pause(me.id, !!p.paused)));
+  socket.on("auction:results", () => act((room, me) => room.showResults(me.id)));
   socket.on("auction:end", () => act((room, me) => room.endAuction(me.id)));
 
   socket.on("xi:set", (p = {}) => act((room, me) => room.setPlayingXI(me.id, p.ids)));

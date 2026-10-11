@@ -8,10 +8,16 @@
  *   lobby      -> players join with the room code and pick a franchise
  *   retention  -> every owner retains up to 2 of last season's players
  *   auction    -> live bidding (15s opening timer, resets to 10s on each bid)
- *   ended      -> results + Playing XI editing
+ *   ended      -> every squad has 15+ players; owners set their Playing XI
+ *   results    -> host reveals the 30-mark evaluation and the winner
  */
 const crypto = require("crypto");
 const { TEAMS_CONFIG, PLAYERS_DB, LAST_SEASON_MAP } = require("./data");
+const { buildResults, quality } = require("./scoring");
+const { IPL_STATS } = require("./iplStats");
+
+// Never let a placeholder like "Batsman 3" into a room.
+const GENERIC_NAME = /^(batsman|batter|bowler|all-?rounder|wicket-?keeper|player)\s*\d+$/i;
 
 // ─── Rules ─────────────────────────────────────────────────────────────
 const MIN_PLAYERS = Number(process.env.MIN_PLAYERS) || 2;
@@ -28,6 +34,8 @@ const UNSOLD_PAUSE_MS = 4500 * T; // pause after UNSOLD
 const INTRO_MS = 90000 * T;
 const ALLOWED_INCREMENTS = [0.25, 0.5, 1];
 const MAX_RETENTIONS = 2;
+const MIN_SQUAD = 15; // the auction finishes once every franchise has this many players
+const MIN_BASE = Math.min(...PLAYERS_DB.map((p) => p.base)); // cheapest possible signing
 const MAX_SQUAD = 25;
 const MAX_OVERSEAS_SQUAD = 8;
 const MAX_OVERSEAS_XI = 4;
@@ -47,33 +55,10 @@ function shuffle(arr) {
   return a;
 }
 
-// Same stat generator as the original single-player game (generated once per room
-// so every client sees identical numbers).
-function generateStats(role) {
-  const r = (n) => Math.floor(Math.random() * n);
-  const f = (n, add, d = 1) => (Math.random() * n + add).toFixed(d);
-  const matches = r(100) + 20;
-  if (role === "Bowler") {
-    return {
-      matches, runs: r(400) + 50, avg: f(15, 5), sr: f(50, 60), hs: r(35) + 5,
-      wkts: r(120) + 20, eco: f(2, 6.5, 2), best: `${r(4) + 2}/${r(30) + 10}`,
-    };
-  }
-  if (role === "All-Rounder") {
-    return {
-      matches, runs: r(2000) + 500, avg: f(20, 20), sr: f(40, 120), hs: r(60) + 40,
-      wkts: r(60) + 10, eco: f(2, 7, 2), best: `${r(3) + 1}/${r(25) + 10}`,
-    };
-  }
-  return {
-    matches, runs: r(4000) + 1000, avg: f(30, 25), sr: f(40, 120), hs: r(80) + 60,
-    wkts: "—", eco: "—", best: "—",
-  };
-}
-
 function buildCatalog() {
   const seen = new Set();
   return PLAYERS_DB.filter((p) => {
+    if (GENERIC_NAME.test(p.name.trim())) return false;
     if (seen.has(p.name)) return false;
     seen.add(p.name);
     return true;
@@ -81,7 +66,7 @@ function buildCatalog() {
     ...p,
     id: i,
     lastTeam: LAST_SEASON_MAP[p.name] || null,
-    stats: generateStats(p.role),
+    stats: IPL_STATS[p.name] || null, // real IPL 2026 numbers only (null = not available)
   }));
 }
 
@@ -91,7 +76,8 @@ class Room {
     this.io = io;
     this.code = code;
     this.hostId = null;
-    this.status = "lobby"; // lobby | retention | auction | ended
+    this.status = "lobby"; // lobby | retention | auction | ended | results
+    this.results = null;
     this.createdAt = Date.now();
     this.emptySince = null;
 
@@ -155,6 +141,16 @@ class Room {
       return "Overseas limit reached (8 max in squad).";
     }
     return null;
+  }
+
+  // After buying one more player at `amount`, can the team still fill its squad to 15
+  // (every remaining slot at the cheapest base price)?
+  reserveOk(team, amount) {
+    const slotsAfter = Math.max(0, MIN_SQUAD - (team.purchased.length + 1));
+    return round2(team.remaining - amount) >= round2(slotsAfter * MIN_BASE);
+  }
+  reserveNeeded(team) {
+    return round2(Math.max(0, MIN_SQUAD - (team.purchased.length + 1)) * MIN_BASE);
   }
 
   humanTeams() { return this.teams.filter((t) => t.ownerId); }
@@ -291,6 +287,10 @@ class Room {
     });
     const total = round2(clean.reduce((a, c) => a + c.price, 0));
     if (total > START_PURSE) throw new Error("Retention cost exceeds the purse.");
+    const mustKeep = round2(Math.max(0, MIN_SQUAD - clean.length) * MIN_BASE);
+    if (START_PURSE - total < mustKeep) {
+      throw new Error(`Keep at least ₹${mustKeep.toFixed(2)} Cr in the purse to fill a 15-player squad.`);
+    }
 
     // revert previous retentions for this team
     for (const old of team.purchased.filter((x) => x.isRetention)) {
@@ -346,6 +346,12 @@ class Room {
     clearTimeout(this._nextTimer);
     if (this.status !== "auction") return;
 
+    // Every franchise has its 15 players -> the auction is over.
+    const owned = this.humanTeams();
+    if (owned.length && owned.every((t) => t.purchased.length >= MIN_SQUAD)) {
+      return this._endAuction("squads-complete");
+    }
+
     while (this.queue.length) {
       const id = this.queue.shift();
       if (this.playerStatus.get(id) !== "pending") continue;
@@ -367,7 +373,7 @@ class Room {
         return;
       }
     }
-    this._endAuction();
+    this._endAuction("pool-empty");
   }
 
   _startPlayer(id) {
@@ -382,7 +388,7 @@ class Room {
     };
     // Nobody can afford / take this player? Don't waste 15 seconds.
     const canAnyone = this.humanTeams().some(
-      (t) => t.remaining >= round2(p.base + 0.25) && !this.canAddPlayer(t, p)
+      (t) => this.reserveOk(t, round2(p.base + 0.25)) && !this.canAddPlayer(t, p)
     );
     if (!canAnyone) {
       this.auction.timerEndsAt = Date.now() + 2000 * T;
@@ -415,6 +421,9 @@ class Room {
     if (problem) throw new Error(problem);
     const amount = round2(a.currentBid + inc);
     if (team.remaining < amount) throw new Error("⚠️ Insufficient funds!");
+    if (!this.reserveOk(team, amount)) {
+      throw new Error(`Keep ₹${this.reserveNeeded(team).toFixed(2)} Cr aside to fill your squad to 15 players.`);
+    }
 
     a.currentBid = amount;
     a.lastBidder = team.id;
@@ -448,7 +457,7 @@ class Room {
     const exOwner = ex && ex.ownerId ? this.members.get(ex.ownerId) : null;
     const eligible =
       ex && exOwner && exOwner.connected && ex.id !== winner.id && ex.rtmCards > 0 &&
-      ex.remaining >= a.currentBid && !this.canAddPlayer(ex, player);
+      this.reserveOk(ex, a.currentBid) && !this.canAddPlayer(ex, player);
 
     if (eligible) {
       a.phase = "rtm";
@@ -524,6 +533,9 @@ class Room {
       throw new Error(`Raise must be higher than ₹${a.rtm.price.toFixed(2)} Cr.`);
     }
     if (team.remaining < raised) throw new Error("⚠️ Insufficient funds for that raise!");
+    if (!this.reserveOk(team, raised)) {
+      throw new Error(`Keep ₹${this.reserveNeeded(team).toFixed(2)} Cr aside to fill your squad to 15 players.`);
+    }
     a.rtm.price = raised;
     a.rtm.stage = "final";
     this._armRtm();
@@ -540,7 +552,9 @@ class Room {
     const team = this.teamOf(playerId);
     if (!team || team.id !== a.rtm.exTeamId) throw new Error("Only the previous franchise can decide.");
     if (match) {
-      if (team.remaining < a.rtm.price) throw new Error("⚠️ Not enough purse to match that price.");
+      if (team.remaining < a.rtm.price || !this.reserveOk(team, a.rtm.price)) {
+        throw new Error("⚠️ Not enough purse to match that price.");
+      }
       return this._rtmEnd(team, a.rtm.price, true);
     }
     this.emit("auction:event", { type: "rtm-cancelled", exTeamId: team.id });
@@ -605,10 +619,10 @@ class Room {
   endAuction(playerId) {
     if (!this.isHost(playerId)) throw new Error("Only the host can end the auction.");
     if (this.status !== "auction") throw new Error("Auction is not live.");
-    this._endAuction();
+    this._endAuction("host");
   }
 
-  _endAuction() {
+  _endAuction(reason = "host") {
     clearTimeout(this._timer);
     clearTimeout(this._nextTimer);
     this.status = "ended";
@@ -617,7 +631,7 @@ class Room {
     for (const t of this.humanTeams()) {
       if (t.playingEleven.length === 0) t.playingEleven = this._autoXI(t);
     }
-    this.emit("auction:event", { type: "ended" });
+    this.emit("auction:event", { type: "ended", reason });
     this.broadcast();
   }
 
@@ -636,8 +650,44 @@ class Room {
     return xi;
   }
 
+  // Top up a short XI with the franchise's best remaining players (max 4 overseas).
+  _fillXI(team) {
+    const xi = [...team.playingEleven];
+    let overseas = xi.filter((id) => isOverseas(this.cat(id))).length;
+    const rest = team.purchased
+      .filter((p) => !xi.includes(p.playerId))
+      .sort((a, b) => quality(this.cat(b.playerId).base) - quality(this.cat(a.playerId).base));
+    for (const p of rest) {
+      if (xi.length >= 11) break;
+      if (p.country !== "India") {
+        if (overseas >= MAX_OVERSEAS_XI) continue;
+        overseas++;
+      }
+      xi.push(p.playerId);
+    }
+    team.playingEleven = xi;
+  }
+
+  // Host reveals the result: 30-mark evaluation of every franchise's Playing XI.
+  showResults(playerId) {
+    if (!this.isHost(playerId)) throw new Error("Only the host can reveal the result.");
+    if (this.status !== "ended") throw new Error("The auction hasn't finished yet.");
+    const teams = this.humanTeams();
+    for (const t of teams) this._fillXI(t);
+    this.results = buildResults(teams.map((t) => ({
+      id: t.id, name: t.name, full: t.full, color: t.color,
+      ownerName: this.members.get(t.ownerId)?.name || "—",
+      remaining: t.remaining,
+      xi: t.playingEleven.map((id) => this.cat(id)),
+    })));
+    this.status = "results";
+    this.emit("auction:event", { type: "results", winnerTeamId: this.results.winnerTeamId });
+    this.broadcast();
+  }
+
   // ─── playing XI ──────────────────────────────────────────────────────
   setPlayingXI(playerId, ids) {
+    if (this.status === "results") throw new Error("Results are final — the Playing XI is locked.");
     const team = this.teamOf(playerId);
     if (!team) throw new Error("You have no franchise.");
     if (!Array.isArray(ids)) throw new Error("Invalid Playing XI.");
@@ -670,8 +720,9 @@ class Room {
       hostId: this.hostId,
       minPlayers: MIN_PLAYERS,
       maxPlayers: MAX_PLAYERS,
+      results: this.results,
       limits: {
-        maxSquad: MAX_SQUAD, maxOverseasSquad: MAX_OVERSEAS_SQUAD,
+        minSquad: MIN_SQUAD, maxSquad: MAX_SQUAD, maxOverseasSquad: MAX_OVERSEAS_SQUAD,
         maxOverseasXI: MAX_OVERSEAS_XI, maxRetentions: MAX_RETENTIONS,
         increments: ALLOWED_INCREMENTS,
       },
