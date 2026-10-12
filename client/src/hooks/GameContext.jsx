@@ -7,6 +7,10 @@ import {
   playUnsoldSound, stopAudio,
 } from "../lib/audio";
 
+export const CATEGORY_LABEL = {
+  "Grade A": "Grade A", "Grade B": "Grade B", Batting: "Batters", Bowling: "Bowlers", Fielding: "All-Rounders / Fielders",
+};
+
 const GameContext = createContext(null);
 export const useGame = () => useContext(GameContext);
 
@@ -145,6 +149,9 @@ export function GameProvider({ children }) {
         case "round2":
           toast(`🔁 Accelerated round — ${e.count} unsold players return!`, "gold");
           break;
+        case "category":
+          toast(`🔀 Host switched to: ${CATEGORY_LABEL[e.category] || e.category}`, "gold");
+          break;
         case "intro-skipped":
           stopAudio();
           break;
@@ -194,6 +201,7 @@ export function GameProvider({ children }) {
     skip: () => emit("auction:skip"),
     pause: (paused) => emit("auction:pause", { paused }),
     endAuction: () => emit("auction:end"),
+    setCategory: (category) => emit("auction:category", { category }),
     showResults: () => emit("auction:results"),
     setXI: (ids) => emit("xi:set", { ids }),
     logout() {

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useGame } from "../hooks/GameContext";
+import { CATEGORY_LABEL, useGame } from "../hooks/GameContext";
 import AuctionCard from "./AuctionCard";
 import PlayerPool from "./PlayerPool";
 import TeamsPanel from "./TeamsPanel";
@@ -102,6 +102,20 @@ export default function Dashboard() {
                 <button className="btn-small" onClick={actions.skip}>⏭ Force finalize</button>
               )}
               <button className="btn-small danger" onClick={endAuction}>⏹ End auction</button>
+              <div className="cat-switch">
+                <span className="host-label">SWITCH GROUP</span>
+                {a.sets.map((s) => (
+                  <button
+                    key={s.id}
+                    className={`cat-btn${a.currentSet === s.id ? " active" : ""}`}
+                    disabled={s.remaining === 0}
+                    onClick={() => actions.setCategory(s.id)}
+                    title={s.remaining === 0 ? "Group finished" : `${s.remaining} players left`}
+                  >
+                    {CATEGORY_LABEL[s.id] || s.id} <b>{s.remaining}</b>
+                  </button>
+                ))}
+              </div>
               <span className="host-progress">{a.queueRemaining} left in queue</span>
             </div>
           )}

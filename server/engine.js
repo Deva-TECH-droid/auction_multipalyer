@@ -97,7 +97,8 @@ class Room {
     }));
 
     this.soldLog = []; // rail: { name, price, teamId, teamName, retention }
-    this.queue = [];
+    this.sets = {}; // category -> [playerId] still to be auctioned
+    this.currentSet = null; // category the auction is currently drawing players from
     this.round = 1;
     this.auction = this._idleAuction();
 
@@ -329,16 +330,47 @@ class Room {
     }
     // Build the order: IPL-style sets (marquee grades first, then batters, bowlers, all-rounders)
     const pending = this.catalog.filter((p) => this.playerStatus.get(p.id) === "pending");
-    this.queue = [];
-    for (const c of CATEGORY_ORDER) {
-      this.queue.push(...shuffle(pending.filter((p) => p.category === c)).map((p) => p.id));
-    }
+    this._buildSets(pending.map((p) => p.id));
     this.round = 1;
     this.status = "auction";
     this.auction = { ...this._idleAuction(), phase: "intro", introEndsAt: Date.now() + INTRO_MS };
     this.emit("auction:event", { type: "started" });
     this.broadcast();
     this._nextTimer = setTimeout(() => this._nextPlayer(), INTRO_MS);
+  }
+
+  // Group the given players into one shuffled list per category (Grade A, Grade B, Batting, ...).
+  _buildSets(ids) {
+    this.sets = {};
+    for (const c of CATEGORY_ORDER) {
+      this.sets[c] = shuffle(ids.filter((id) => this.cat(id).category === c));
+    }
+    this.currentSet = CATEGORY_ORDER.find((c) => this.sets[c].length) || null;
+  }
+
+  remainingCount() {
+    return CATEGORY_ORDER.reduce((n, c) => n + (this.sets[c] || []).length, 0);
+  }
+
+  // Next player from the current category; when it is empty, move to the next category that has players.
+  _takeNext() {
+    let c = this.currentSet;
+    if (!c || !(this.sets[c] || []).length) c = CATEGORY_ORDER.find((x) => (this.sets[x] || []).length);
+    if (!c) return null;
+    this.currentSet = c;
+    return this.sets[c].shift();
+  }
+
+  // Host: stop drawing from the current category (finished or not) and continue with another one.
+  // The player on the block finishes normally; the NEXT player comes from the chosen category.
+  setCategory(playerId, category) {
+    if (!this.isHost(playerId)) throw new Error("Only the host can switch the category.");
+    if (this.status !== "auction") throw new Error("The auction is not live.");
+    if (!CATEGORY_ORDER.includes(category)) throw new Error("Unknown category.");
+    if (!(this.sets[category] || []).length) throw new Error("No players left in that category.");
+    this.currentSet = category;
+    this.emit("auction:event", { type: "category", category });
+    this.broadcast();
   }
 
   _nextPlayer() {
@@ -352,8 +384,7 @@ class Room {
       return this._endAuction("squads-complete");
     }
 
-    while (this.queue.length) {
-      const id = this.queue.shift();
+    for (let id = this._takeNext(); id !== null; id = this._takeNext()) {
       if (this.playerStatus.get(id) !== "pending") continue;
       this._startPlayer(id);
       return;
@@ -365,7 +396,7 @@ class Room {
       if (unsold.length) {
         this.round = 2;
         unsold.forEach((p) => this.playerStatus.set(p.id, "pending"));
-        this.queue = shuffle(unsold.map((p) => p.id));
+        this._buildSets(unsold.map((p) => p.id));
         this.emit("auction:event", { type: "round2", count: unsold.length });
         this._nextTimer = setTimeout(() => this._nextPlayer(), 2500 * T);
         this.auction = { ...this._idleAuction(), phase: "between" };
@@ -752,7 +783,9 @@ class Room {
         remainingMs: a.remainingMs,
         rtm: a.rtm,
         round: this.round,
-        queueRemaining: this.queue.length,
+        queueRemaining: this.remainingCount(),
+        currentSet: this.currentSet,
+        sets: CATEGORY_ORDER.map((c) => ({ id: c, remaining: (this.sets[c] || []).length })),
       },
       soldLog: this.soldLog,
       unsoldIds,

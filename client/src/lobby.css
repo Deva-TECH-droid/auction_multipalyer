@@ -194,3 +194,16 @@
 .pavatar { border-radius: 50%; object-fit: cover; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); flex-shrink: 0; }
 .stats-season { grid-column: 1 / -1; font-family: var(--font-heading); font-size: 0.62rem; letter-spacing: 2px; color: var(--gold); text-align: center; padding-bottom: 4px; }
 .pavatar-text { display: inline-flex; align-items: center; justify-content: center; color: var(--accent); font-family: var(--font-heading); font-weight: 700; }
+
+/* ---- previous IPL team + category switch ---- */
+.ipl-history { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 10px; font-size: 0.8rem; }
+.ih-label { font-family: var(--font-heading); font-size: 0.6rem; letter-spacing: 2px; color: var(--text-dim); }
+.ih-team { display: inline-flex; align-items: center; gap: 6px; color: var(--gold); font-weight: 700; }
+.ih-team img { width: 22px; height: 22px; object-fit: contain; }
+.ih-none { color: var(--text-dim); font-style: italic; }
+.set-tag { color: var(--accent); border-color: rgba(0,229,255,0.4); }
+.cat-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; margin-top: 6px; }
+.cat-btn { cursor: pointer; font-family: var(--font-display); font-size: 0.74rem; color: var(--text-primary); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.18); border-radius: 18px; padding: 5px 12px; }
+.cat-btn b { color: var(--gold); margin-left: 4px; }
+.cat-btn.active { background: rgba(0,229,255,0.18); border-color: var(--accent); }
+.cat-btn:disabled { opacity: 0.35; cursor: not-allowed; }

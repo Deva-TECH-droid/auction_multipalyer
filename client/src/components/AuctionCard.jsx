@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { useCountdown, useGame } from "../hooks/GameContext";
+import PlayerAvatar from "./PlayerAvatar";
+import { CATEGORY_LABEL, useCountdown, useGame } from "../hooks/GameContext";
 import { avatarFallback, getFlag, roleColor } from "../lib/helpers";
 
 const show = (v, d) => (v === null || v === undefined ? "—" : d !== undefined && typeof v === "number" ? v.toFixed(d) : v);
@@ -34,6 +35,7 @@ export default function AuctionCard() {
     );
   }
 
+  const prevTeam = player.lastTeam ? room.teams.find((t) => t.id === player.lastTeam) : null;
   const leader = a.lastBidder ? room.teams.find((t) => t.id === a.lastBidder) : null;
   const buyer = room.teams.find((t) => t.purchased.some((p) => p.playerId === player.id));
   const buyerEntry = buyer?.purchased.find((p) => p.playerId === player.id);
@@ -102,17 +104,11 @@ export default function AuctionCard() {
             {player.role.toUpperCase()}
           </span>
           {room.auction.round === 2 && <span className="round-tag">🔁 ACCELERATED</span>}
+          {player.category && <span className="round-tag set-tag">{CATEGORY_LABEL[player.category] || player.category}</span>}
         </div>
 
         <div className="player-visual">
-          <img
-            id="card-avatar" className="player-img" alt={player.name} src={wikiUrl}
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src =
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=0d1826&color=00e5ff&size=256&bold=true`;
-            }}
-          />
+          <PlayerAvatar name={player.name} size={100} className="player-img" />
         </div>
 
         <h2 id="card-name" className="glitch-text">{player.name}</h2>
@@ -121,6 +117,18 @@ export default function AuctionCard() {
           <span className="country-badge" id="card-country-badge">
             <span id="card-country">{getFlag(player.country)}</span> <span id="card-country-name">{player.country}</span>
           </span>
+        </div>
+
+        <div className="ipl-history">
+          <span className="ih-label">PREVIOUS IPL TEAM</span>
+          {prevTeam ? (
+            <span className="ih-team">
+              <img src={`/images/${prevTeam.id}.webp`} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              {prevTeam.full}
+            </span>
+          ) : (
+            <span className="ih-none">No previous IPL team on record</span>
+          )}
         </div>
 
         <div className="performance-stats glass-panel">
