@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" width="200" height="200" role="img" aria-label="Animated 10 second bid countdown">
+  <rect width="260" height="260" rx="24" fill="#0b132f"/>
+  <circle cx="130" cy="124" r="86" fill="none" stroke="#1b2a5e" stroke-width="14"/>
+  <circle cx="130" cy="124" r="86" fill="none" stroke="#7dffb2" stroke-width="14" stroke-linecap="round"
+          stroke-dasharray="540.35" stroke-dashoffset="0" transform="rotate(-90 130 124)">
+    <animate attributeName="stroke-dashoffset" values="0;540.35" dur="11s" repeatCount="indefinite"/>
+    <animate attributeName="stroke" values="#7dffb2;#ffd54a;#ff4d4d" keyTimes="0;0.6;1" dur="11s" repeatCount="indefinite"/>
+  </circle>
+  <g font-family="Impact, Segoe UI, Arial Black, sans-serif" font-size="78" font-weight="900" fill="#fff" text-anchor="middle">
+    <text x="130" y="152" opacity="1">10<animate attributeName="opacity" values="1;0;0" keyTimes="0;0.0909;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="152" opacity="0">9<animate attributeName="opacity" values="0;1;0;0" keyTimes="0;0.0909;0.1818;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="152" opacity="0">8<animate attributeName="opacity" values="0;1;0;0" keyTimes="0;0.1818;0.2727;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="152" opacity="0">7<animate attributeName="opacity" values="0;1;0;0" keyTimes="0;0.2727;0.3636;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="152" opacity="0">6<animate attributeName="opacity" values="0;1;0;0" keyTimes="0;0.3636;0.4545;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="152" opacity="0">5<animate attributeName="opacity" values="0;1;0;0" keyTimes="0;0.4545;0.5454;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="152" opacity="0" fill="#ffd54a">4<animate attributeName="opacity" values="0;1;0;0" keyTimes="0;0.5454;0.6363;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="152" opacity="0" fill="#ffd54a">3<animate attributeName="opacity" values="0;1;0;0" keyTimes="0;0.6363;0.7272;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="152" opacity="0" fill="#ff4d4d">2<animate attributeName="opacity" values="0;1;0;0" keyTimes="0;0.7272;0.8181;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="152" opacity="0" fill="#ff4d4d">1<animate attributeName="opacity" values="0;1;0;0" keyTimes="0;0.8181;0.9090;1" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+    <text x="130" y="146" opacity="0" font-size="44" fill="#ff4d4d">SOLD!<animate attributeName="opacity" values="0;1" keyTimes="0;0.9090" calcMode="discrete" dur="11s" repeatCount="indefinite"/></text>
+  </g>
+  <text x="130" y="238" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#9fb4ff" text-anchor="middle" letter-spacing="2">GOING ONCE · GOING TWICE</text>
+</svg>

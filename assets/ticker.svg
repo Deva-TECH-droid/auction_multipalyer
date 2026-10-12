@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 48" width="900" height="48" role="img" aria-label="Live bidding ticker">
+  <rect width="900" height="48" rx="10" fill="#0b132f"/>
+  <rect x="0" y="0" width="120" height="48" rx="10" fill="#c1121f"/>
+  <circle cx="22" cy="24" r="5" fill="#fff"><animate attributeName="opacity" values="1;0.2;1" dur="1s" repeatCount="indefinite"/></circle>
+  <text x="36" y="30" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="800" fill="#fff" letter-spacing="2">LIVE</text>
+  <clipPath id="c"><rect x="130" y="0" width="760" height="48"/></clipPath>
+  <g clip-path="url(#c)">
+    <g font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="600" fill="#e8eeff">
+      <animateTransform attributeName="transform" type="translate" from="900 0" to="-1500 0" dur="26s" repeatCount="indefinite"/>
+      <text y="30">🔥 New bid ₹ 8.50 Cr   •   ⏱ Timer reset to 10s   •   ⚡ SNAP +1 Cr!   •   🃏 RTM card played   •   🔨 SOLD to the highest bidder   •   🌍 Max 4 overseas in your XI   •   💰 Purse never goes negative   •   🏆 Team Power Rating decides the champion   •   🔁 Unsold players return once   •   📱 Refresh? Your seat is saved</text>
+    </g>
+  </g>
+</svg>
