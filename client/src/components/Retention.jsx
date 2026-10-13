@@ -49,7 +49,7 @@ export default function Retention() {
       <div className="section-header">
         <h2>SELECT RETENTIONS</h2>
         <p>
-          Each franchise can retain up to {max} players from last season. The price you set is
+          Each franchise can retain up to {max} players from its IPL 2026 squad. The minimum retention price is ₹{room.limits.minRetentionPrice} Cr — pay more if you like. The price is
           deducted from your ₹100 Cr purse.{" "}
           {!isHost && "The host starts the auction once everyone has locked in."}
         </p>
@@ -61,6 +61,7 @@ export default function Retention() {
             const retained = t.purchased.filter((p) => p.isRetention);
             const isMine = myTeam?.id === t.id;
             const owner = room.players.find((p) => p.id === t.ownerId);
+            const roster = catalog.filter((p) => p.lastTeam === t.id).sort((a, b) => b.base - a.base || a.name.localeCompare(b.name));
             return (
               <div
                 key={t.id}
@@ -86,7 +87,7 @@ export default function Retention() {
                   </div>
                 </div>
                 <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: 8 }}>
-                  Retained: {retained.length}/{max}
+                  Retained: {retained.length}/{max} · min ₹{room.limits.minRetentionPrice} Cr each
                 </div>
                 <div className="retention-player-preview">
                   {retained.length === 0 ? (
@@ -99,6 +100,16 @@ export default function Retention() {
                     ))
                   )}
                 </div>
+                <div className="ret-roster">
+                  <div className="ret-roster-title">IPL 2026 SQUAD ({roster.length})</div>
+                  <div className="ret-roster-list">
+                    {roster.map((p) => (
+                      <span key={p.id} className={`ret-chip${retained.some((r) => r.playerId === p.id) ? " kept" : ""}`}>
+                        {p.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
                 {isMine && !locked && <div className="ret-hint">Tap to choose retentions</div>}
                 <button className="team-info-btn" onClick={(e) => { e.stopPropagation(); setInfoTeam(t); }}>ℹ Info</button>
               </div>
@@ -109,7 +120,7 @@ export default function Retention() {
 
       {editing && myTeam && (
         <RetentionModal
-          team={myTeam} catalog={catalog} max={max}
+          team={myTeam} catalog={catalog} max={max} minPrice={room.limits.minRetentionPrice}
           onClose={() => setEditing(false)}
           onSave={(picks) => { actions.setRetentions(picks); setEditing(false); }}
           toast={toast}
@@ -120,8 +131,8 @@ export default function Retention() {
   );
 }
 
-function RetentionModal({ team, catalog, max, onClose, onSave, toast }) {
-  const candidates = catalog.filter((p) => p.lastTeam === team.id);
+function RetentionModal({ team, catalog, max, minPrice, onClose, onSave, toast }) {
+  const candidates = catalog.filter((p) => p.lastTeam === team.id).sort((a, b) => b.base - a.base || a.name.localeCompare(b.name));
   const [sel, setSel] = useState(() => {
     const m = {};
     team.purchased.filter((p) => p.isRetention).forEach((p) => { m[p.playerId] = p.price; });
@@ -133,11 +144,13 @@ function RetentionModal({ team, catalog, max, onClose, onSave, toast }) {
       const n = { ...s };
       if (n[p.id] !== undefined) delete n[p.id];
       else if (Object.keys(n).length >= max) { toast(`Can only retain ${max} player(s)!`, "error"); return s; }
-      else n[p.id] = p.base;
+      else n[p.id] = minPrice;
       return n;
     });
   };
   const total = Object.values(sel).reduce((a, b) => a + Number(b || 0), 0);
+  const tooLow = Object.values(sel).some((v) => !(Number(v) >= minPrice));
+  const tooMuch = total > 100;
 
   return (
     <div id="retention-modal" className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -148,12 +161,12 @@ function RetentionModal({ team, catalog, max, onClose, onSave, toast }) {
         </div>
         <div className="modal-body">
           <p className="info-text">
-            Select up to {max} players from your previous season roster. Their salary will be deducted from your ₹100 Cr purse.
+            Select up to {max} players from your IPL 2026 squad. The minimum retention price is <b>₹{minPrice} Cr</b> — you can pay any amount above it. The price is deducted from your ₹100 Cr purse.
           </p>
           <ul className="scrollable-list retention-candidates-list" style={{ height: 300 }}>
             {candidates.length === 0 && (
               <li style={{ textAlign: "center", padding: 20, color: "var(--text-dim)", fontStyle: "italic" }}>
-                No eligible players from last season.
+                No players from your IPL 2026 squad in this auction pool.
               </li>
             )}
             {candidates.map((p) => {
@@ -168,8 +181,8 @@ function RetentionModal({ team, catalog, max, onClose, onSave, toast }) {
                   <span className="candidate-cost">
                     ₹
                     <input
-                      type="number" step="0.25" min={p.base} disabled={!on}
-                      value={on ? sel[p.id] : p.base}
+                      type="number" step="0.25" min={minPrice} disabled={!on}
+                      value={on ? sel[p.id] : minPrice}
                       onChange={(e) => setSel((s) => ({ ...s, [p.id]: e.target.value }))}
                       style={{
                         width: 60, background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.15)",
@@ -183,9 +196,10 @@ function RetentionModal({ team, catalog, max, onClose, onSave, toast }) {
             })}
           </ul>
           <div className="modal-footer">
-            <span className="ret-total">Total: ₹{total.toFixed(2)} Cr</span>
+            <span className="ret-total">Total: ₹{total.toFixed(2)} Cr{tooLow ? ` · minimum ₹${minPrice} Cr each` : tooMuch ? " · over your ₹100 Cr purse" : ""}</span>
             <button
               id="save-retention-btn"
+              disabled={tooLow || tooMuch}
               onClick={() => onSave(Object.entries(sel).map(([playerId, price]) => ({ playerId: Number(playerId), price: Number(price) })))}
             >
               💾 SAVE RETENTIONS

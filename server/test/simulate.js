@@ -5,7 +5,7 @@
  *   BOTS=10 node test/simulate.js    -> 10 players
  */
 process.env.PORT = process.env.PORT || "3999";
-process.env.TIMER_SCALE = process.env.TIMER_SCALE || "0.02";
+process.env.TIMER_SCALE = process.env.TIMER_SCALE || "0.01";
 process.env.MIN_PLAYERS = "7";
 const assert = require("assert");
 const { io } = require("socket.io-client");
@@ -86,6 +86,7 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
   for (const b of bots) {
     const team = myTeam(b);
     const cands = b.catalog.filter((p) => p.lastTeam === team.id).slice(0, 3);
+    assert(cands.length >= 2, `${team.id} has 2026 squad players to retain`);
     // over-limit must be rejected
     if (cands.length === 3) {
       emit(b, "retention:set", { picks: cands.map((c) => ({ playerId: c.id, price: c.base })) });
@@ -97,7 +98,11 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
     emit(b, "retention:set", { picks: [{ playerId: foreign.id, price: 5 }] });
     await wait(30);
     assert(b.errors.some((e) => /not with/.test(e)), "foreign retention rejected");
-    emit(b, "retention:set", { picks: cands.slice(0, 2).map((c, k) => ({ playerId: c.id, price: c.base + 1 + k })) });
+    // below the ₹15 Cr minimum must be rejected (and nothing saved)
+    emit(b, "retention:set", { picks: [{ playerId: cands[0].id, price: 14.75 }] });
+    await wait(30);
+    assert(b.errors.some((e) => /Minimum retention price is ₹15/.test(e)), "retention below 15 Cr rejected");
+    emit(b, "retention:set", { picks: cands.slice(0, 2).map((c, k) => ({ playerId: c.id, price: 15 + k * 2.5 })) });
   }
   await wait(200);
   for (const b of bots) {
@@ -118,18 +123,26 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
   await wait(150);
   assert.equal(bots[0].state.status, "auction");
 
-  let bidsPlaced = 0, rtmUsed = 0, rtmOffers = 0;
+  let bidsPlaced = 0, rtmUsed = 0, rtmOffers = 0, raises = 0, finals = 0;
   const loop = setInterval(() => {
     for (const b of bots) {
       const s = b.state;
       if (!s || s.status !== "auction") continue;
       const a = s.auction;
       const mine = myTeam(b);
-      if (a.phase === "rtm" && a.rtm && a.rtm.exTeamId === mine.id) {
-        rtmOffers++;
-        const use = Math.random() < 0.5;
-        if (use) rtmUsed++;
-        emit(b, "auction:rtm", { use });
+      if (a.phase === "rtm" && a.rtm) {
+        const r = a.rtm;
+        if (r.stage === "decide" && r.exTeamId === mine.id) {
+          rtmOffers++;
+          const use = Math.random() < 0.6;
+          emit(b, "auction:rtm", { use });
+        } else if (r.stage === "raise" && r.winningTeamId === mine.id) {
+          raises++;
+          emit(b, "auction:rtmRaise", { amount: Math.random() < 0.6 ? r.price + 1 : null });
+        } else if (r.stage === "final" && r.exTeamId === mine.id) {
+          finals++;
+          emit(b, "auction:rtmFinal", { match: Math.random() < 0.5 });
+        }
         continue;
       }
       if (a.phase !== "bidding" || a.paused) continue;
@@ -144,7 +157,11 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
   }, 8);
 
   // exercise pause / resume once mid-auction
-  await wait(400);
+  // bidding must not start before the opening ceremony ends
+  assert.equal(bots[0].state.auction.phase, "intro", "intro plays first");
+  assert(bots[0].state.auction.playerId === null, "no player up during intro");
+  while (bots[0].state.auction.phase === "intro") await wait(50);
+  await wait(100);
   // (timers are scaled down, so retry until the pause lands during a bidding phase)
   for (let k = 0; k < 40 && !bots[0].state.auction.paused; k++) {
     emit(bots[0], "auction:pause", { paused: true });
@@ -159,6 +176,25 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
   await wait(150);
   assert.equal(bots[0].state.auction.currentBid, frozenBid, "no bids accepted while paused");
   emit(bots[0], "auction:pause", { paused: false });
+
+  // ---- host switches the group: next player must come from the chosen category ----
+  emit(bots[1], "auction:category", { category: "Bowling" });
+  await wait(60);
+  assert(bots[1].errors.some((e) => /Only the host/.test(e)), "non-host cannot switch category");
+  emit(bots[0], "auction:category", { category: "Nonsense" });
+  await wait(60);
+  assert(bots[0].errors.some((e) => /Unknown category/.test(e)), "unknown category rejected");
+  const before = bots[0].events.length;
+  emit(bots[0], "auction:category", { category: "Bowling" });
+  let nextEv = null;
+  for (let k = 0; k < 200 && !nextEv; k++) {
+    await wait(25);
+    nextEv = bots[0].events.slice(before).find((e) => e.type === "next");
+  }
+  assert(nextEv, "a new player started after the switch");
+  assert.equal(bots[0].catalog[nextEv.playerId].category, "Bowling", "next player is from the chosen group");
+  assert.equal(bots[0].state.auction.currentSet, "Bowling");
+  assert(bots[0].state.auction.sets.length === 5, "state lists every group with its remaining count");
 
   const t0 = Date.now();
   while (bots[0].state.status !== "ended" && Date.now() - t0 < 120000) await wait(100);
@@ -207,6 +243,37 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
     assert(b.errors.some((e) => /Max 4 overseas/.test(e)), "5 overseas in XI rejected");
   }
 
+  // ---- finish: every squad should have 15 (when the auction ended by itself) ----
+  const endedEv = bots[0].events.find((e) => e.type === "ended");
+  if (endedEv.reason === "squads-complete") {
+    assert(s.teams.filter((t) => t.ownerId).every((t) => t.purchased.length >= 15), "all squads have 15+");
+  }
+
+  // ---- result reveal: host only, 30-mark evaluation, winner = rank 1 ----
+  emit(bots[1], "auction:results");
+  await wait(80);
+  assert(bots[1].errors.some((e) => /Only the host/.test(e)), "non-host cannot reveal results");
+  emit(bots[0], "auction:results");
+  await wait(150);
+  const res = bots[0].state.results;
+  assert.equal(bots[0].state.status, "results");
+  assert.equal(res.rankings.length, N, "one ranking row per owner");
+  for (const r of res.rankings) {
+    const sum = Object.values(r.marks).reduce((a, b) => a + b, 0);
+    assert(Math.abs(sum - r.total) < 0.02 && r.total <= 30 && r.total >= 0, "marks add up to <= 30");
+    assert(Object.values(r.marks).every((m) => m >= 0 && m <= 5), "each category within 0-5");
+    const sq = bots[0].state.teams.find((t) => t.id === r.teamId).purchased;
+    const indian = sq.filter((p) => p.country === "India").length;
+    const overseas = sq.length - indian;
+    assert.equal(r.xi.length, Math.min(11, indian + Math.min(4, overseas)), "XI filled as far as the 4-overseas rule allows");
+  }
+  assert.equal(res.winnerTeamId, res.rankings[0].teamId);
+  assert(res.rankings.every((r, i, a) => i === 0 || a[i - 1].total >= r.total), "sorted best first");
+  emit(bots[2], "xi:set", { ids: [] });
+  await wait(80);
+  assert(bots[2].errors.some((e) => /locked/.test(e)), "XI locked after results");
+  console.log("winner:", res.rankings[0].teamName, res.rankings[0].ownerName, res.rankings[0].total + "/30");
+
   // ---- reconnect keeps seat ----
   const old = bots[4];
   const keep = { team: myTeam(old).id, purse: myTeam(old).remaining };
@@ -223,7 +290,7 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
   assert.equal(myTeam(re).remaining, keep.purse);
   assert.equal(re.state.players.find((p) => p.id === re.you).connected, true);
 
-  console.log(`PASS  players=${N} sold=${sold.length} rtmOffers=${rtmOffers} rtmSold=${rtmSold.length} unsold-left=${s.unsoldIds.length} bids=${bidsPlaced}`);
+  console.log(`PASS  players=${N} sold=${sold.length} rtmOffers=${rtmOffers} rtmSold=${rtmSold.length} unsold-left=${s.unsoldIds.length} bids=${bidsPlaced} raises=${raises} finals=${finals}`);
   bots.forEach((x) => x.socket.close()); re.socket.close();
   server.close(); process.exit(0);
 })().catch((e) => { console.error("FAIL", e); process.exit(1); });

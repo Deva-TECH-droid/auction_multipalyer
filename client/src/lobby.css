@@ -207,3 +207,10 @@
 .cat-btn b { color: var(--gold); margin-left: 4px; }
 .cat-btn.active { background: rgba(0,229,255,0.18); border-color: var(--accent); }
 .cat-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ---- retention: every franchise's IPL 2026 squad ---- */
+.ret-roster { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px; }
+.ret-roster-title { font-family: var(--font-heading); font-size: 0.58rem; letter-spacing: 2px; color: var(--text-dim); margin-bottom: 6px; }
+.ret-roster-list { display: flex; flex-wrap: wrap; gap: 4px; max-height: 120px; overflow-y: auto; }
+.ret-chip { font-size: 0.68rem; padding: 2px 8px; border-radius: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: var(--text-primary); }
+.ret-chip.kept { background: rgba(0,230,118,0.16); border-color: var(--accent3); color: var(--accent3); }

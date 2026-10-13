@@ -120,14 +120,14 @@ export default function AuctionCard() {
         </div>
 
         <div className="ipl-history">
-          <span className="ih-label">PREVIOUS IPL TEAM</span>
+          <span className="ih-label">IPL 2026 TEAM</span>
           {prevTeam ? (
             <span className="ih-team">
               <img src={`/images/${prevTeam.id}.webp`} alt="" onError={(e) => { e.currentTarget.style.display = "none"; }} />
               {prevTeam.full}
             </span>
           ) : (
-            <span className="ih-none">No previous IPL team on record</span>
+            <span className="ih-none">Not in any IPL 2026 squad</span>
           )}
         </div>
 

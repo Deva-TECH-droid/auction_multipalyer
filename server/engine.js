@@ -34,6 +34,7 @@ const UNSOLD_PAUSE_MS = 4500 * T; // pause after UNSOLD
 const INTRO_MS = 90000 * T;
 const ALLOWED_INCREMENTS = [0.25, 0.5, 1];
 const MAX_RETENTIONS = 2;
+const MIN_RETENTION_PRICE = 15; // crore — a player can never be retained for less than this
 const MIN_SQUAD = 15; // the auction finishes once every franchise has this many players
 const MIN_BASE = Math.min(...PLAYERS_DB.map((p) => p.base)); // cheapest possible signing
 const MAX_SQUAD = 25;
@@ -282,8 +283,10 @@ class Room {
       if (p.lastTeam !== team.id) throw new Error(`${p.name} was not with ${team.name} last season.`);
       if (seen.has(p.id)) throw new Error("Duplicate player in retention list.");
       seen.add(p.id);
-      let price = round2(Number(pk.price));
-      if (!Number.isFinite(price) || price < p.base) price = p.base;
+      const price = round2(Number(pk.price));
+      if (!Number.isFinite(price) || price < MIN_RETENTION_PRICE) {
+        throw new Error(`Minimum retention price is ₹${MIN_RETENTION_PRICE} Cr (${p.name}). You can pay more, never less.`);
+      }
       return { p, price };
     });
     const total = round2(clean.reduce((a, c) => a + c.price, 0));
@@ -754,7 +757,7 @@ class Room {
       results: this.results,
       limits: {
         minSquad: MIN_SQUAD, maxSquad: MAX_SQUAD, maxOverseasSquad: MAX_OVERSEAS_SQUAD,
-        maxOverseasXI: MAX_OVERSEAS_XI, maxRetentions: MAX_RETENTIONS,
+        maxOverseasXI: MAX_OVERSEAS_XI, maxRetentions: MAX_RETENTIONS, minRetentionPrice: MIN_RETENTION_PRICE,
         increments: ALLOWED_INCREMENTS,
       },
       players: [...this.members.values()].map((m) => ({

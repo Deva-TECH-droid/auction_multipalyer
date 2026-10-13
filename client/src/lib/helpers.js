@@ -1,3 +1,4 @@
+
 // Ported 1:1 from the original script.js helpers.
 
 export function getFlag(country) {
