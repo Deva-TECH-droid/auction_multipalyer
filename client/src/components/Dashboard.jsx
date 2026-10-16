@@ -31,7 +31,11 @@ export default function Dashboard() {
   };
 
   const endAuction = () => {
-    if (window.confirm("End the auction now? Remaining players will stay unsold.")) actions.endAuction();
+    const done = a.phase === "complete";
+    const msg = done
+      ? "End the auction? AI will pick the strongest Playing XI for every team (you can edit it afterwards)."
+      : "End the auction now? Remaining players stay unsold and AI will pick the strongest Playing XI from what each team has bought.";
+    if (window.confirm(msg)) actions.endAuction();
   };
 
   const leave = () => {
@@ -101,7 +105,8 @@ export default function Dashboard() {
               {(a.phase === "bidding" || a.phase === "rtm") && (
                 <button className="btn-small" onClick={actions.skip}>⏭ Force finalize</button>
               )}
-              <button className="btn-small danger" onClick={endAuction}>⏹ End auction</button>
+              <button className={`btn-small danger${a.phase === "complete" ? " pulse-btn" : ""}`} onClick={endAuction}>⏹ End Auction{a.phase === "complete" ? " → AI picks XI" : ""}</button>
+              {a.phase !== "complete" && (
               <div className="cat-switch">
                 <span className="host-label">SWITCH GROUP</span>
                 {a.sets.map((s) => (
@@ -116,6 +121,7 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
+              )}
               <span className="host-progress">{a.queueRemaining} left in queue</span>
             </div>
           )}

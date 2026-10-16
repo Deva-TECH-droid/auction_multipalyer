@@ -161,13 +161,15 @@ export function GameProvider({ children }) {
         case "resumed":
           toast("▶ Auction resumed.", "info");
           break;
+        case "squads-complete":
+          stopAudio();
+          toast("✅ Every franchise has its squad — the host can now End the Auction.", "gold");
+          break;
+        case "out":
+          toast(`🚪 ${e.teamName} went OUT — a new team can join the bidding.`, "info");
+          break;
         case "ended":
-          toast(
-            e.reason === "squads-complete"
-              ? "✅ Every franchise has 15 players — auction finished!"
-              : "🎉 Auction complete!",
-            "gold"
-          );
+          toast("🤖 Auction over — AI picked the strongest Playing XI for every team (you can still edit yours).", "gold");
           playIPLTheme();
           break;
         case "results":
@@ -201,6 +203,8 @@ export function GameProvider({ children }) {
     skip: () => emit("auction:skip"),
     pause: (paused) => emit("auction:pause", { paused }),
     endAuction: () => emit("auction:end"),
+    out: () => emit("auction:out"),
+    aiXI: () => emit("xi:ai"),
     setCategory: (category) => emit("auction:category", { category }),
     showResults: () => emit("auction:results"),
     setXI: (ids) => emit("xi:set", { ids }),

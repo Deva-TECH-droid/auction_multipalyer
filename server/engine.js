@@ -13,7 +13,7 @@
  */
 const crypto = require("crypto");
 const { TEAMS_CONFIG, PLAYERS_DB, LAST_SEASON_MAP } = require("./data");
-const { buildResults, quality } = require("./scoring");
+const { buildResults, quality, selectBestXI } = require("./scoring");
 const { IPL_STATS } = require("./iplStats");
 
 // Never let a placeholder like "Batsman 3" into a room.
@@ -94,6 +94,7 @@ class Room {
       ownerId: null,
       purchased: [], // { playerId, name, role, country, price, isRTM, isRetention }
       playingEleven: [], // playerIds
+      xiSource: null, // "ai" | "manual"
       rtmCards: 1,
     }));
 
@@ -110,13 +111,15 @@ class Room {
 
   _idleAuction() {
     return {
-      phase: "idle", // idle | intro | bidding | rtm | between
+      phase: "idle", // idle | intro | bidding | rtm | between | complete
       introEndsAt: null,
       paused: false,
       playerId: null,
       currentBid: 0,
       lastBidder: null,
       involvedTeams: [],
+      contenders: [], // max 2 teams may bid on a player at one time (the "bidding war")
+      outTeams: [], // teams that withdrew (went Out) on this player
       timerEndsAt: null,
       timerTotalMs: OPEN_TIMER_MS,
       remainingMs: null, // only while paused
@@ -369,6 +372,7 @@ class Room {
   setCategory(playerId, category) {
     if (!this.isHost(playerId)) throw new Error("Only the host can switch the category.");
     if (this.status !== "auction") throw new Error("The auction is not live.");
+    if (this.auction.phase === "complete") throw new Error("All squads are complete — press End Auction.");
     if (!CATEGORY_ORDER.includes(category)) throw new Error("Unknown category.");
     if (!(this.sets[category] || []).length) throw new Error("No players left in that category.");
     this.currentSet = category;
@@ -384,7 +388,10 @@ class Room {
     // Every franchise has its 15 players -> the auction is over.
     const owned = this.humanTeams();
     if (owned.length && owned.every((t) => t.purchased.length >= MIN_SQUAD)) {
-      return this._endAuction("squads-complete");
+      this.auction = { ...this._idleAuction(), phase: "complete" };
+      this.emit("auction:event", { type: "squads-complete" });
+      this.broadcast();
+      return;
     }
 
     for (let id = this._takeNext(); id !== null; id = this._takeNext()) {
@@ -450,6 +457,11 @@ class Room {
       throw new Error(`Someone bid first — price is now ₹${a.currentBid.toFixed(2)} Cr.`);
     }
     if (a.lastBidder === team.id) throw new Error("You are already the highest bidder.");
+    if (a.outTeams.includes(team.id)) throw new Error("You went Out on this player — you can't bid on him again.");
+    if (!a.contenders.includes(team.id) && a.contenders.length >= 2) {
+      const names = a.contenders.map((id) => this.team(id).name).join(" and ");
+      throw new Error(`Bidding war between ${names} — you can bid only after one of them goes Out.`);
+    }
     const player = this.cat(a.playerId);
     const problem = this.canAddPlayer(team, player);
     if (problem) throw new Error(problem);
@@ -462,10 +474,27 @@ class Room {
     a.currentBid = amount;
     a.lastBidder = team.id;
     if (!a.involvedTeams.includes(team.id)) a.involvedTeams.push(team.id);
+    if (!a.contenders.includes(team.id)) a.contenders.push(team.id);
     a.timerEndsAt = Date.now() + BID_TIMER_MS;
     a.timerTotalMs = BID_TIMER_MS;
     this._armBidTimer();
     this.emit("auction:event", { type: "bid", teamId: team.id, teamName: team.name, amount });
+    this.broadcast();
+  }
+
+  // A team in the bidding war withdraws. Only the trailing team can go Out (the leader holds the bid).
+  // That frees a slot, so a third team may now join the bidding.
+  out(playerId) {
+    const a = this.auction;
+    if (this.status !== "auction" || a.phase !== "bidding") throw new Error("No player is up for bidding right now.");
+    if (a.paused) throw new Error("Auction is paused by the host.");
+    const team = this.teamOf(playerId);
+    if (!team) throw new Error("You have no franchise.");
+    if (!a.contenders.includes(team.id)) throw new Error("You are not in this bidding war.");
+    if (a.lastBidder === team.id) throw new Error("You are the highest bidder — only the trailing team can go Out.");
+    a.contenders = a.contenders.filter((id) => id !== team.id);
+    a.outTeams.push(team.id);
+    this.emit("auction:event", { type: "out", teamId: team.id, teamName: team.name });
     this.broadcast();
   }
 
@@ -661,27 +690,28 @@ class Room {
     clearTimeout(this._nextTimer);
     this.status = "ended";
     this.auction = this._idleAuction();
-    // Auto-pick a best XI for any franchise that didn't set one (max 4 overseas).
-    for (const t of this.humanTeams()) {
-      if (t.playingEleven.length === 0) t.playingEleven = this._autoXI(t);
-    }
-    this.emit("auction:event", { type: "ended", reason });
+    // AI: pick the strongest Playing XI for every franchise from the players it bought.
+    for (const t of this.humanTeams()) this._aiPickXI(t);
+    this.emit("auction:event", { type: "ended", reason, ai: true });
     this.broadcast();
   }
 
-  _autoXI(team) {
-    const sorted = [...team.purchased].sort((a, b) => b.price - a.price);
-    const xi = [];
-    let overseas = 0;
-    for (const p of sorted) {
-      if (xi.length >= 11) break;
-      if (p.country !== "India") {
-        if (overseas >= MAX_OVERSEAS_XI) continue;
-        overseas++;
-      }
-      xi.push(p.playerId);
-    }
-    return xi;
+  // Rule-based "AI": searches the franchise's own squad for the XI that scores best on the 30-mark
+  // evaluation (batting, spin, pace, overseas, balance, middle order) with max 4 overseas players.
+  _aiPickXI(team) {
+    const squad = team.purchased.map((p) => this.cat(p.playerId));
+    team.playingEleven = selectBestXI(squad, MAX_OVERSEAS_XI);
+    team.xiSource = "ai";
+  }
+
+  // Owner asks the AI to (re)select the best XI — editable again afterwards.
+  aiXI(playerId) {
+    if (this.status === "results") throw new Error("Results are final — the Playing XI is locked.");
+    const team = this.teamOf(playerId);
+    if (!team) throw new Error("You have no franchise.");
+    if (!team.purchased.length) throw new Error("Buy some players first.");
+    this._aiPickXI(team);
+    this.broadcast();
   }
 
   // Top up a short XI with the franchise's best remaining players (max 4 overseas).
@@ -732,6 +762,7 @@ class Room {
     const overseas = unique.filter((id) => isOverseas(this.cat(id))).length;
     if (overseas > MAX_OVERSEAS_XI) throw new Error(`Max ${MAX_OVERSEAS_XI} overseas players in Playing XI!`);
     team.playingEleven = unique;
+    team.xiSource = "manual";
     this.broadcast();
   }
 
@@ -771,6 +802,7 @@ class Room {
         ownerName: t.ownerId ? this.members.get(t.ownerId)?.name : null,
         purchased: t.purchased,
         playingEleven: t.playingEleven,
+        xiSource: t.xiSource,
         rtmCards: t.rtmCards,
       })),
       auction: {
@@ -781,6 +813,8 @@ class Room {
         currentBid: a.currentBid,
         lastBidder: a.lastBidder,
         involvedTeams: a.involvedTeams,
+        contenders: a.contenders,
+        outTeams: a.outTeams,
         timerEndsAt: a.timerEndsAt,
         timerTotalMs: a.timerTotalMs,
         remainingMs: a.remainingMs,

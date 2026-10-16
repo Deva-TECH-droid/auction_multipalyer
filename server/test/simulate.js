@@ -22,7 +22,7 @@ function makeBot(i) {
     socket: io(URL, { transports: ["websocket"] }),
     state: null, catalog: null, code: null, you: null, errors: [], events: [],
   };
-  bot.socket.on("room:state", (s) => { bot.state = s; });
+  bot.socket.on("room:state", (s) => { bot.state = s; if (s.auction.contenders.length > 2) throw new Error("more than 2 teams in a bidding war"); });
   bot.socket.on("room:catalog", (c) => { bot.catalog = c; });
   bot.socket.on("room:joined", ({ code, you }) => { bot.code = code; bot.you = you; });
   bot.socket.on("errorMsg", (m) => bot.errors.push(m));
@@ -123,7 +123,7 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
   await wait(150);
   assert.equal(bots[0].state.status, "auction");
 
-  let bidsPlaced = 0, rtmUsed = 0, rtmOffers = 0, raises = 0, finals = 0;
+  let outs = 0, bidsPlaced = 0, rtmUsed = 0, rtmOffers = 0, raises = 0, finals = 0;
   const loop = setInterval(() => {
     for (const b of bots) {
       const s = b.state;
@@ -144,6 +144,10 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
           emit(b, "auction:rtmFinal", { match: Math.random() < 0.5 });
         }
         continue;
+      }
+      if (a.phase === "complete" && b.i === 0 && !b.endSent) { b.endSent = true; emit(b, "auction:end"); continue; }
+      if (a.phase === "bidding" && !a.paused && a.contenders.includes(mine.id) && a.lastBidder !== mine.id && Math.random() < 0.2) {
+        emit(b, "auction:out"); outs++; continue;
       }
       if (a.phase !== "bidding" || a.paused) continue;
       // bid with ~35% probability each tick, within a personal max
@@ -245,7 +249,12 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
 
   // ---- finish: every squad should have 15 (when the auction ended by itself) ----
   const endedEv = bots[0].events.find((e) => e.type === "ended");
-  if (endedEv.reason === "squads-complete") {
+  assert(endedEv.ai === true, "End Auction triggers the AI XI selection");
+  for (const t of s.teams.filter((x) => x.ownerId && x.purchased.length)) {
+    assert.equal(t.xiSource, "ai", `AI picked the XI for ${t.id}`);
+    assert(t.playingEleven.every((id) => t.purchased.some((p) => p.playerId === id)), "AI XI uses only the team's own players");
+  }
+  if (bots[0].events.some((e) => e.type === "squads-complete")) {
     assert(s.teams.filter((t) => t.ownerId).every((t) => t.purchased.length >= 15), "all squads have 15+");
   }
 
@@ -290,7 +299,7 @@ const myTeam = (bot) => bot.state.teams.find((t) => t.ownerId === bot.you);
   assert.equal(myTeam(re).remaining, keep.purse);
   assert.equal(re.state.players.find((p) => p.id === re.you).connected, true);
 
-  console.log(`PASS  players=${N} sold=${sold.length} rtmOffers=${rtmOffers} rtmSold=${rtmSold.length} unsold-left=${s.unsoldIds.length} bids=${bidsPlaced} raises=${raises} finals=${finals}`);
+  console.log(`PASS  players=${N} sold=${sold.length} rtmOffers=${rtmOffers} rtmSold=${rtmSold.length} unsold-left=${s.unsoldIds.length} bids=${bidsPlaced} raises=${raises} finals=${finals} outs=${outs}`);
   bots.forEach((x) => x.socket.close()); re.socket.close();
   server.close(); process.exit(0);
 })().catch((e) => { console.error("FAIL", e); process.exit(1); });

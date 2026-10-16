@@ -16,7 +16,7 @@ export function EndedPanel({ onOpenTeam }) {
       <span className="cricket-icon">🏁</span>
       <h2>AUCTION FINISHED</h2>
       <p>
-        Every franchise has built its squad. Set your <b>Playing XI</b> now — the result is judged on it
+        The auction is over and <b>AI has picked the strongest Playing XI</b> for every franchise from its own players. You can still edit yours (or ask AI again) — the result is judged on it
         (batting, spin, pace, overseas, balance and middle order — 30 marks).
       </p>
       <ul className="squad-status">

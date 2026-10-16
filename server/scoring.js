@@ -124,4 +124,38 @@ function buildResults(teams) {
   return { rankings: rows, winnerTeamId: rows[0]?.teamId || null };
 }
 
-module.exports = { evaluateTeam, buildResults, profile, quality };
+// The strongest Playing XI a squad can field: greedy start (best players first, max `maxOverseas`
+// overseas), then repeatedly apply the single best swap that raises the 30-mark score
+// (ties broken by raw player quality). Deterministic — same squad, same XI.
+function selectBestXI(players, maxOverseas = 4) {
+  if (players.length <= 11) return players.map((p) => p.id);
+  const os = (p) => p.country !== "India";
+  const value = (xi) => evaluateTeam(xi).total * 1000 + xi.reduce((a, p) => a + quality(p.base), 0);
+  const sorted = [...players].sort((a, b) => quality(b.base) - quality(a.base) || a.name.localeCompare(b.name));
+  let xi = [];
+  let overseas = 0;
+  for (const p of sorted) {
+    if (xi.length >= 11) break;
+    if (os(p)) { if (overseas >= maxOverseas) continue; overseas++; }
+    xi.push(p);
+  }
+  let best = value(xi);
+  for (let pass = 0; pass < 60; pass++) {
+    let move = null;
+    for (let i = 0; i < xi.length; i++) {
+      for (const cand of sorted) {
+        if (xi.includes(cand)) continue;
+        const osCount = xi.filter((p, k) => k !== i && os(p)).length + (os(cand) ? 1 : 0);
+        if (osCount > maxOverseas) continue;
+        const trial = xi.slice(); trial[i] = cand;
+        const v = value(trial);
+        if (v > best + 1e-9 && (!move || v > move.v)) move = { v, trial };
+      }
+    }
+    if (!move) break;
+    xi = move.trial; best = move.v;
+  }
+  return xi.map((p) => p.id);
+}
+
+module.exports = { evaluateTeam, buildResults, profile, quality, selectBestXI };

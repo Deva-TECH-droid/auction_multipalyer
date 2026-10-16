@@ -109,6 +109,8 @@ io.on("connection", (socket) => {
   socket.on("auction:rtm", (p = {}) => act((room, me) => room.useRTM(me.id, !!p.use)));
   socket.on("auction:rtmRaise", (p = {}) => act((room, me) => room.rtmRaise(me.id, p.amount == null ? null : p.amount)));
   socket.on("auction:rtmFinal", (p = {}) => act((room, me) => room.rtmFinal(me.id, !!p.match)));
+  socket.on("auction:out", () => act((room, me) => room.out(me.id)));
+  socket.on("xi:ai", () => act((room, me) => room.aiXI(me.id)));
   socket.on("auction:skip", () => act((room, me) => room.skip(me.id)));
   socket.on("auction:pause", (p = {}) => act((room, me) => room.pause(me.id, !!p.paused)));
   socket.on("auction:results", () => act((room, me) => room.showResults(me.id)));

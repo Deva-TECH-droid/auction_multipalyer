@@ -73,41 +73,49 @@ export function playAuctionStartSequence() {
   }, 8000);
 }
 
-// ─── Winner celebration: crowd roar while suspense builds, then the team's FULL anthem ───
+// ─── Winner celebration ───
+// 1) crowd cheering plays ONCE while the suspense builds,
+// 2) the winning (clapping) sound plays ONCE at the reveal,
+// 3) after that ONLY the winning team's full theme song plays.
 let celeAudio = [];
+let celeVolume = 1;
+let themeTimer = null;
+const track = (a, base) => { a._base = base; a.volume = Math.min(1, base * celeVolume); celeAudio.push(a); return a; };
+
 export function startCrowd() {
   stopAudio();
   if (muted) return;
-  const crowd = new Audio(url("people.mp3"));
-  crowd.loop = true;
-  crowd._base = 0.5;
-  crowd.volume = 0.5 * celeVolume;
+  const crowd = track(new Audio(url("people.mp3")), 0.6);
+  crowd.loop = false;
   crowd.play().catch(() => {});
-  celeAudio.push(crowd);
 }
 export function playWinnerTheme(teamId) {
   if (muted) return;
-  const theme = new Audio(url(teamId === "dc" ? "dc (2).mp3" : `${teamId}.mp3`));
-  theme._base = 0.9;
-  theme.volume = 0.9 * celeVolume;
-  theme.play().catch(() => {});
-  const clap = new Audio(url("clapping.mp3"));
-  clap.loop = true;
-  clap._base = 0.35;
-  clap.volume = 0.35 * celeVolume;
-  clap.play().catch(() => {});
-  celeAudio.push(theme, clap);
+  let started = false;
+  const startTheme = () => {
+    if (started) return;
+    started = true;
+    clearTimeout(themeTimer);
+    const theme = track(new Audio(url(teamId === "dc" ? "dc (2).mp3" : `${teamId}.mp3`)), 0.9);
+    theme.play().catch(() => {});
+  };
+  const clap = track(new Audio(url("clapping.mp3")), 0.7);
+  clap.loop = false;
+  clap.onended = startTheme; // the theme starts right after the one-time winning sound
+  clap.onerror = startTheme;
+  clap.play().catch(startTheme);
+  themeTimer = setTimeout(startTheme, 5000); // safety net if the clip can't play
 }
 export function stopCelebration() {
+  clearTimeout(themeTimer);
   celeAudio.forEach((a) => { a.pause(); a.currentTime = 0; });
   celeAudio = [];
 }
 
-let celeVolume = 1;
 export function setCelebrationVolume(v) {
   celeVolume = v;
   celeAudio.forEach((a) => { a.volume = Math.min(1, (a._base || 0.6) * v); });
 }
 export function pauseCelebration(paused) {
-  celeAudio.forEach((a) => { if (paused) a.pause(); else a.play().catch(() => {}); });
+  celeAudio.forEach((a) => { if (paused) a.pause(); else if (!a.ended) a.play().catch(() => {}); });
 }

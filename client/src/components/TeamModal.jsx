@@ -94,7 +94,13 @@ export default function TeamModal({ teamId, onClose }) {
               <div id="playing-11-list" className={`playing-11-grid dropzone${over === "p11" ? " drag-over" : ""}`} {...zone("p11")}>
                 {xiPlayers.map((p) => card(p, true))}
               </div>
-              <div className="xi-meta">✈ Overseas in XI: {overseasXI}/{max}{editable ? " · drag or tap players to build your XI" : ""}</div>
+              {editable && (
+                <div className="xi-ai-row">
+                  <span className="xi-source">{team.xiSource === "ai" ? "🤖 AI-picked XI" : team.xiSource === "manual" ? "✏️ Edited by you" : "No XI yet"}</span>
+                  <button className="btn-small" onClick={actions.aiXI}>🤖 Let AI pick the best XI</button>
+                </div>
+              )}
+              <div className="xi-meta">✈ Overseas in XI: {overseasXI}/{max}{editable ? " · drag or tap players to edit your XI" : ""}</div>
 
               <div className="team-power-stats glass-panel">
                 <h4>Team Power Rating</h4>

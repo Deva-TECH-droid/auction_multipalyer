@@ -23,9 +23,11 @@ export default function AuctionCard() {
     return (
       <div id="welcome-state" className="welcome-box glass-card">
         <span className="cricket-icon">🏏</span>
-        <h2>{a.phase === "between" ? "ACCELERATED ROUND" : "ARENA READY"}</h2>
+        <h2>{a.phase === "complete" ? "ALL SQUADS COMPLETE" : a.phase === "between" ? "ACCELERATED ROUND" : "ARENA READY"}</h2>
         <p>
-          {a.phase === "intro"
+          {a.phase === "complete"
+            ? "Every franchise has its squad. When the host presses End Auction, AI picks the strongest Playing XI for each team — and you can still edit it."
+            : a.phase === "intro"
             ? `🎙️ The auction begins after the opening ceremony… bidding starts in ${Math.ceil(introMs / 1000)}s`
             : a.phase === "between"
             ? "Unsold players are coming back to the block for one more chance…"
@@ -62,6 +64,13 @@ export default function AuctionCard() {
   // Can I bid? (server re-validates everything)
   const bidding = a.phase === "bidding" && !a.paused;
   const isLeader = !!myTeam && a.lastBidder === myTeam.id;
+  const contenders = a.contenders || [];
+  const outTeams = a.outTeams || [];
+  const inWar = !!myTeam && contenders.includes(myTeam.id);
+  const wentOut = !!myTeam && outTeams.includes(myTeam.id);
+  const lockedOut = !!myTeam && !inWar && contenders.length >= 2; // war between two other teams
+  const warNames = contenders.map((id) => room.teams.find((t) => t.id === id)?.name).join(" & ");
+  const canGoOut = a.phase === "bidding" && !a.paused && inWar && !isLeader;
   const squadFull = !!myTeam && myTeam.purchased.length >= room.limits.maxSquad;
   const overseasFull =
     !!myTeam && player.country !== "India" &&
@@ -71,6 +80,8 @@ export default function AuctionCard() {
   else if (a.paused) hint = "⏸ Paused by the host";
   else if (a.phase === "rtm") hint = "⚡ RTM decision in progress…";
   else if (a.phase === "between") hint = "";
+  else if (wentOut) hint = "🚪 You went Out on this player.";
+  else if (lockedOut) hint = `⚔️ Bidding war: ${warNames}. You can bid once one of them goes Out.`;
   else if (isLeader) hint = "🏆 You're the highest bidder";
   else if (squadFull) hint = "Your squad is full (25).";
   else if (overseasFull) hint = "Overseas limit reached (8).";
@@ -80,7 +91,7 @@ export default function AuctionCard() {
     return (
       <button
         className="btn-bid"
-        disabled={!myTeam || !bidding || isLeader || squadFull || overseasFull || !afford}
+        disabled={!myTeam || !bidding || isLeader || wentOut || lockedOut || squadFull || overseasFull || !afford}
         title={!afford && myTeam ? "Not enough purse" : undefined}
         onClick={() => actions.bid(inc, a.currentBid)}
         {...extra}
@@ -94,7 +105,8 @@ export default function AuctionCard() {
   const displayBid = rtm ? rtm.price : buyerEntry ? buyerEntry.price : a.currentBid;
 
   const wikiUrl = `https://en.wikipedia.org/wiki/Special:FilePath/${player.name.replace(/\s+/g, "_")}.jpg`;
-  const war = a.involvedTeams.length >= 2 ? a.involvedTeams.map((id) => room.teams.find((t) => t.id === id)) : [];
+  const war = contenders.map((id) => room.teams.find((t) => t.id === id)).filter(Boolean);
+  const outList = outTeams.map((id) => room.teams.find((t) => t.id === id)).filter(Boolean);
 
   return (
     <div id="auction-card" className="auction-card-wrapper" key={player.id}>
@@ -168,9 +180,9 @@ export default function AuctionCard() {
           </div>
         </div>
 
-        {war.length > 0 && (
+        {(war.length >= 2 || outList.length > 0) && (
           <div id="bidding-war-section" className="bidding-war-panel">
-            <h4 className="war-title">⚔️ Bidding War</h4>
+            <h4 className="war-title">⚔️ Bidding War <small>(max 2 teams)</small></h4>
             <div id="war-chips-container" className="war-chips">
               {war.map((t) => {
                 const lead = a.lastBidder === t.id;
@@ -187,10 +199,19 @@ export default function AuctionCard() {
                   </div>
                 );
               })}
+              {outList.map((t) => (
+                <div key={t.id} className="war-chip out">
+                  <img src={`/images/${t.id}.webp`} className="war-team-logo" alt={t.name} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                  <div className="war-team-info"><span className="war-team-name">{t.name}</span><span className="war-team-budget">OUT</span></div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
+        {canGoOut && (
+          <button id="out-btn" className="btn-out" onClick={actions.out}>🚪 OUT — withdraw from this player</button>
+        )}
         <div className="bid-controls" id="bid-controls-area">
           {bidBtn(0.25, "BID +₹0.25 Cr")}
           {bidBtn(0.5, "BID +₹0.5 Cr")}
