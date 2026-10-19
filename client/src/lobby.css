@@ -240,3 +240,7 @@
 .team-points { margin-top: 3px; font-size: 0.74rem; color: var(--gold); font-family: var(--font-display); }
 .team-points small { color: var(--text-dim); margin-left: 4px; }
 .pts-title { margin-top: 26px; font-family: var(--font-heading); letter-spacing: 3px; color: var(--gold); }
+
+/* ---- RTM card counts ---- */
+.rtm-count b, .ret-rtm b { color: var(--gold); }
+.ret-rtm { font-size: 0.78rem; color: var(--text-dim); margin-right: 12px; }

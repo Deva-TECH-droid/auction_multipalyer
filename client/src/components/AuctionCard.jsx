@@ -258,7 +258,7 @@ function RtmBanner({ rtm, room, myTeam, actions, ms }) {
   let actionsUI = null;
   if (rtm.stage === "decide") {
     text = isEx
-      ? `${winner.name} won at ${p} — ${ex.name} can RTM! (${ex.rtmCards} left)`
+      ? `${winner.name} won at ${p} — ${ex.name} can RTM! (${ex.rtmCards} RTM card${ex.rtmCards === 1 ? "" : "s"} left)`
       : `${winner.name} won at ${p} — waiting for ${ex.name} (${ex.ownerName}) to decide…`;
     if (isEx) {
       actionsUI = (

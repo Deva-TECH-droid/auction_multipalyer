@@ -28,7 +28,7 @@ const T = Number(process.env.TIMER_SCALE) || 1;
 const OPEN_TIMER_MS = 15000 * T; // first countdown for every player
 const BID_TIMER_MS = 10000 * T; // countdown after each bid
 const RTM_WINDOW_MS = 12000 * T; // time the previous franchise has to use RTM
-const SOLD_PAUSE_MS = 5500 * T; // pause after SOLD / RTM
+const SOLD_PAUSE_MS = 3000 * T; // pause after SOLD / RTM (exactly 3 seconds before next player auction starts)
 const UNSOLD_PAUSE_MS = 4500 * T; // pause after UNSOLD
 // Opening ceremony (crowd 8s + announcer 77.6s + clapping 4s). Bidding starts only after it ends.
 const INTRO_MS = 90000 * T;
@@ -95,7 +95,7 @@ class Room {
       purchased: [], // { playerId, name, role, country, price, isRTM, isRetention }
       playingEleven: [], // playerIds
       xiSource: null, // "ai" | "manual"
-      rtmCards: 1,
+      rtmCards: MAX_RETENTIONS, // 2 cards with 0 retentions · 1 with 1 · 0 with 2 (kept in sync with the retention picks)
     }));
 
     this.soldLog = []; // rail: { name, price, teamId, teamName, retention }
@@ -266,6 +266,12 @@ class Room {
   }
 
   // ─── retention ───────────────────────────────────────────────────────
+  // RTM cards depend only on how many players the franchise retained:
+  //   0 retained -> 2 cards · 1 retained -> 1 card · 2 retained -> 0 cards
+  rtmCardsFor(team) {
+    return Math.max(0, MAX_RETENTIONS - team.purchased.filter((p) => p.isRetention).length);
+  }
+
   retentionCandidates(teamId) {
     return this.catalog.filter((p) => p.lastTeam === teamId);
   }
@@ -315,6 +321,7 @@ class Room {
       this.soldLog.push({ name: p.name, price, teamId: team.id, teamName: team.name, retention: true });
     }
     team.remaining = round2(START_PURSE - total);
+    team.rtmCards = this.rtmCardsFor(team); // live: shown on every screen while retentions are edited
     this.broadcast();
   }
 
@@ -326,6 +333,17 @@ class Room {
     this.broadcast();
   }
 
+  startRetentionReveal(playerId, force = false) {
+    if (!this.isHost(playerId)) throw new Error("Only the host can start the retention reveal.");
+    if (this.status !== "retention") throw new Error("Retention phase is not active.");
+    const waiting = [...this.members.values()].filter((m) => !m.retentionLocked);
+    if (waiting.length && !force) {
+      throw new Error(`Waiting for ${waiting.map((w) => w.name).join(", ")} to lock retentions.`);
+    }
+    this.retentionRevealing = true;
+    this.broadcast();
+  }
+
   // ─── auction flow ────────────────────────────────────────────────────
   startAuction(playerId, force = false) {
     if (!this.isHost(playerId)) throw new Error("Only the host can start the auction.");
@@ -334,6 +352,8 @@ class Room {
     if (waiting.length && !force) {
       throw new Error(`Waiting for ${waiting.map((w) => w.name).join(", ")} to lock retentions.`);
     }
+    this.retentionRevealing = false;
+    for (const t of this.teams) t.rtmCards = this.rtmCardsFor(t); // final, authoritative count
     // Build the order: IPL-style sets (marquee grades first, then batters, bowlers, all-rounders)
     const pending = this.catalog.filter((p) => this.playerStatus.get(p.id) === "pending");
     this._buildSets(pending.map((p) => p.id));
@@ -565,7 +585,7 @@ class Room {
     const a = this.auction;
     clearTimeout(this._timer);
     const player = this.cat(a.playerId);
-    if (spendCard) this.team(a.rtm.exTeamId).rtmCards--;
+    if (spendCard) { const ex = this.team(a.rtm.exTeamId); ex.rtmCards = Math.max(0, ex.rtmCards - 1); }
     a.rtm = null;
     this._finalizeSold(player, team, price, spendCard);
   }
@@ -783,6 +803,7 @@ class Room {
       code: this.code,
       status: this.status,
       hostId: this.hostId,
+      retentionRevealing: !!this.retentionRevealing,
       minPlayers: MIN_PLAYERS,
       maxPlayers: MAX_PLAYERS,
       results: this.results,

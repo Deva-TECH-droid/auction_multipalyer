@@ -81,6 +81,7 @@ export default function TeamModal({ teamId, onClose }) {
           <div className="modal-stats">
             <div>Budget Remaining: <span id="modal-budget" className="highlight">₹{team.remaining.toFixed(2)} Cr</span></div>
             <div>Squad Size: <span id="modal-squad-size">{team.purchased.length}</span> players</div>
+            {team.ownerId && <div>RTM cards: <span className="highlight">{team.rtmCards}</span></div>}
             <div title="Grade A = 10, Grade B = 6, others = 1, plus real IPL 2026 performance">
               Team Points: <span className="highlight">{team.points.total}</span>
               <small className="pts-detail"> (A×{team.points.gradeA} · B×{team.points.gradeB} · grade {team.points.grade} + IPL {team.points.perf})</small>

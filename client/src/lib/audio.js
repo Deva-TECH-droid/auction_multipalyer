@@ -48,6 +48,27 @@ export function playHammerSound() {
 }
 export function playUnsoldSound() { playAudio("E One.mp3", 0.8); }
 
+export function playSoldAnnouncementSound(teamId) {
+  if (muted) return;
+  const hammer = new Audio(url("hammer.mp3"));
+  hammer.volume = 0.95;
+  hammer.play().catch(() => {});
+
+  setTimeout(() => {
+    if (muted) return;
+    const clap = new Audio(url("clapping.mp3"));
+    clap.volume = 0.45;
+    clap.play().catch(() => {});
+  }, 250);
+
+  if (teamId) {
+    setTimeout(() => {
+      if (muted) return;
+      playTeamTheme(teamId, 2500);
+    }, 400);
+  }
+}
+
 export function playAuctionStartSequence() {
   if (muted) return;
   const people = new Audio(url("people.mp3"));

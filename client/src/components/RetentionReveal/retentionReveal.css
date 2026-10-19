@@ -1,0 +1,724 @@
+/* ─── Clean, Simple, Animated IPL Retention Reveal ─── */
+
+.retention-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: radial-gradient(circle at 50% 30%, var(--team-bg-glow, rgba(20, 25, 50, 0.9)) 0%, #080c16 70%, #04060c 100%);
+  color: #ffffff;
+  font-family: var(--font-body, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  overflow: hidden;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  animation: revealFadeIn 0.5s ease-out forwards;
+}
+
+@keyframes revealFadeIn {
+  from { opacity: 0; transform: scale(1.02); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.retention-reveal-overlay.closing {
+  animation: revealFadeOut 0.5s ease-in forwards;
+}
+
+@keyframes revealFadeOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.98); }
+}
+
+/* Ambient animated background particles */
+.reveal-bg-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.reveal-bg-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--team-primary, #ffd700);
+  opacity: 0.15;
+  filter: blur(4px);
+  animation: floatParticle 8s infinite ease-in-out alternate;
+}
+
+@keyframes floatParticle {
+  0% { transform: translateY(0px) scale(0.8); opacity: 0.1; }
+  100% { transform: translateY(-40px) scale(1.3); opacity: 0.28; }
+}
+
+/* ─── Top Navigation Bar ─── */
+.reveal-nav-bar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 28px;
+  background: rgba(8, 12, 24, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  gap: 16px;
+}
+
+.reveal-brand-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reveal-ipl-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.6));
+}
+
+.reveal-brand-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.reveal-brand-title {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffd700;
+  text-transform: uppercase;
+}
+
+.reveal-brand-sub {
+  font-size: 0.68rem;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+}
+
+/* Stepper: Clean Buttons for Playing Teams */
+.reveal-teams-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.reveal-stepper-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-stepper-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.reveal-stepper-btn.active {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 170, 0, 0.15) 100%);
+  border-color: #ffd700;
+  color: #ffd700;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.4);
+  transform: scale(1.04);
+}
+
+.reveal-stepper-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.reveal-stepper-owner {
+  font-size: 0.7rem;
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+.reveal-stepper-badge {
+  background: #ffd700;
+  color: #000;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.reveal-unowned-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.reveal-unowned-btn.active {
+  background: rgba(255, 100, 100, 0.15);
+  border-color: #ff6b6b;
+  color: #ff9999;
+}
+
+/* Control Buttons */
+.reveal-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reveal-ctrl-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reveal-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.reveal-start-now-btn {
+  background: linear-gradient(135deg, #ffd700 0%, #ff8800 100%);
+  border: none;
+  color: #0b0f19;
+  font-weight: 900;
+  box-shadow: 0 4px 15px rgba(255, 170, 0, 0.4);
+}
+
+.reveal-start-now-btn:hover {
+  background: linear-gradient(135deg, #ffe033 0%, #ff9900 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 170, 0, 0.6);
+}
+
+/* ─── Main Stage ─── */
+.reveal-main-stage {
+  flex: 1;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 30px;
+  box-sizing: border-box;
+  max-width: 1100px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Franchise Banner Section */
+.reveal-franchise-hero {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  animation: heroSlideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes heroSlideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.reveal-hero-logo-wrap {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  border: 2px solid var(--team-primary, #ffd700);
+  box-shadow: 0 0 25px var(--team-glow, rgba(255, 215, 0, 0.5));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.reveal-hero-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
+}
+
+.reveal-hero-step-label {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--team-primary, #ffd700);
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 3px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reveal-hero-name {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.9), 0 0 30px var(--team-glow, rgba(255, 215, 0, 0.3));
+  line-height: 1.1;
+}
+
+.reveal-hero-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.reveal-hero-pill {
+  background: rgba(12, 18, 36, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 4px 14px;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reveal-hero-pill b {
+  color: #ffd700;
+}
+
+.reveal-sound-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--team-primary, #ffd700);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 3px 12px;
+  border-radius: 12px;
+}
+
+.sound-wave-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+
+.sound-bar {
+  width: 2px;
+  background: currentColor;
+  border-radius: 1px;
+  animation: soundBarDance 0.8s infinite ease-in-out alternate;
+}
+.sound-bar:nth-child(1) { height: 40%; animation-delay: 0.1s; }
+.sound-bar:nth-child(2) { height: 90%; animation-delay: 0.3s; }
+.sound-bar:nth-child(3) { height: 60%; animation-delay: 0.2s; }
+
+@keyframes soundBarDance {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+/* ─── Retained Players Showcase Cards ─── */
+.reveal-cards-container {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 880px;
+  animation: cardsPopUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardsPopUp {
+  from { opacity: 0; transform: translateY(30px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.reveal-player-card {
+  flex: 1;
+  max-width: 420px;
+  background: linear-gradient(135deg, rgba(16, 22, 42, 0.85) 0%, rgba(8, 12, 26, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  border-top: 3px solid var(--team-primary, #ffd700);
+  border-radius: 18px;
+  padding: 22px 24px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75), 0 0 25px var(--team-glow, rgba(255, 215, 0, 0.25));
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.reveal-player-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85), 0 0 35px var(--team-glow, rgba(255, 215, 0, 0.4));
+}
+
+.reveal-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reveal-retention-pill {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  background: var(--team-primary, #ffd700);
+  color: #0b0f19;
+  padding: 3px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.reveal-card-team-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.reveal-card-body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.reveal-avatar-ring {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 2px solid var(--team-primary, #ffd700);
+  box-shadow: 0 0 15px var(--team-glow, rgba(255, 215, 0, 0.4));
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #0d1826;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.reveal-avatar-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.reveal-player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reveal-player-name-text {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffffff;
+  line-height: 1.15;
+  margin: 0;
+}
+
+.reveal-player-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reveal-role-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.reveal-country-tag {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Golden Price Box */
+.reveal-card-price-box {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  border-radius: 12px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.reveal-price-lbl {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.reveal-price-amt {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.6);
+  letter-spacing: 1px;
+}
+
+.reveal-price-amt span {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 700;
+}
+
+/* 0 Players: Clean Status Card */
+.reveal-zero-players-card {
+  max-width: 540px;
+  width: 100%;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(20, 24, 44, 0.88) 0%, rgba(10, 14, 28, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  padding: 28px 32px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.reveal-zero-icon {
+  font-size: 2.4rem;
+}
+
+.reveal-zero-title {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0;
+}
+
+.reveal-zero-desc {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.reveal-zero-perks {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.reveal-zero-perk-box {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+
+.reveal-perk-num {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #ffd700;
+  display: block;
+}
+
+.reveal-perk-txt {
+  font-size: 0.68rem;
+  color: rgba(255, 255, 255, 0.65);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* ─── Unowned Franchises (Not Playing) Screen ─── */
+.reveal-unowned-stage {
+  max-width: 840px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  animation: heroSlideDown 0.6s ease-out forwards;
+}
+
+.reveal-unowned-header-badge {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.15);
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  padding: 4px 14px;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.reveal-unowned-title {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 2.1rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0;
+}
+
+.reveal-unowned-desc {
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.75);
+  max-width: 620px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.reveal-unowned-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.reveal-unowned-card {
+  background: rgba(14, 18, 34, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.reveal-unowned-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  opacity: 0.65;
+}
+
+.reveal-unowned-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.reveal-unowned-name {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.reveal-unowned-status {
+  font-size: 0.65rem;
+  color: #ff6b6b;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* ─── Bottom Footer Bar ─── */
+.reveal-footer-bar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 28px;
+  background: rgba(8, 12, 24, 0.8);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.reveal-auto-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #ffd700, #ff8800);
+  transition: width 0.1s linear;
+}
+
+.reveal-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reveal-footer-pill {
+  background: #ffd700;
+  color: #0b0f19;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+}
+
+.reveal-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+@media (max-width: 768px) {
+  .reveal-cards-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  .reveal-hero-name {
+    font-size: 1.6rem;
+  }
+  .reveal-stepper-owner {
+    display: none;
+  }
+}

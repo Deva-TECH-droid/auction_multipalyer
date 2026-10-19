@@ -5,7 +5,7 @@ import TeamInfoModal from "./TeamInfoModal";
 import { avatarFallback } from "../lib/helpers";
 
 // Retention phase: each owner keeps up to 2 of last season's players for their own franchise.
-export default function Retention() {
+export default function Retention({ onStartAuctionReveal }) {
   const { room, you, myTeam, isHost, catalog, actions, toast } = useGame();
   const [editing, setEditing] = useState(false);
   const [infoTeam, setInfoTeam] = useState(null);
@@ -17,13 +17,16 @@ export default function Retention() {
   const max = room.limits.maxRetentions;
 
   const startAuction = () => {
+    let force = false;
     if (!allLocked) {
       const names = room.players.filter((p) => !p.retentionLocked).map((p) => p.name).join(", ");
-      if (!window.confirm(`${names} haven't locked retentions yet. Start the auction anyway?`)) return;
-      actions.startAuction(true);
-    } else {
-      actions.startAuction(false);
+      if (!window.confirm(`${names} haven't locked retentions yet. Start the retention reveal anyway?`)) return;
+      force = true;
     }
+    // Do NOT start auction yet! Trigger the retention reveal first.
+    // The auction will automatically be started only after the reveal finishes.
+    actions.startRetentionReveal(force);
+    if (onStartAuctionReveal) onStartAuctionReveal(force);
   };
 
   return (
@@ -50,7 +53,7 @@ export default function Retention() {
         <h2>SELECT RETENTIONS</h2>
         <p>
           Each franchise can retain up to {max} players from its IPL 2026 squad. The minimum retention price is ₹{room.limits.minRetentionPrice} Cr — pay more if you like. The price is
-          deducted from your ₹100 Cr purse.{" "}
+          deducted from your ₹100 Cr purse. <b>RTM cards:</b> 0 retained = 2 · 1 retained = 1 · 2 retained = 0.{" "}
           {!isHost && "The host starts the auction once everyone has locked in."}
         </p>
       </div>
@@ -88,6 +91,7 @@ export default function Retention() {
                 </div>
                 <div style={{ fontSize: "0.8rem", color: "var(--text-dim)", marginBottom: 8 }}>
                   Retained: {retained.length}/{max} · min ₹{room.limits.minRetentionPrice} Cr each
+                  {t.ownerId && <span className="rtm-count"> · ⚡ RTM cards: <b>{t.rtmCards}</b></span>}
                 </div>
                 <div className="retention-player-preview">
                   {retained.length === 0 ? (
@@ -196,6 +200,7 @@ function RetentionModal({ team, catalog, max, minPrice, onClose, onSave, toast }
             })}
           </ul>
           <div className="modal-footer">
+            <span className="ret-rtm">⚡ RTM cards after this: <b>{Math.max(0, max - Object.keys(sel).length)}</b></span>
             <span className="ret-total">Total: ₹{total.toFixed(2)} Cr{tooLow ? ` · minimum ₹${minPrice} Cr each` : tooMuch ? " · over your ₹100 Cr purse" : ""}</span>
             <button
               id="save-retention-btn"

@@ -1,8 +1,7 @@
-
 import React from "react";
 import { useGame } from "../hooks/GameContext";
 import { avatarFallback } from "../lib/helpers";
- 
+
 // Right panel: all 10 franchises with live purse + squad size.
 export default function TeamsPanel({ onOpenTeam }) {
   const { room, myTeam, pulse } = useGame();
@@ -37,7 +36,7 @@ export default function TeamsPanel({ onOpenTeam }) {
               <div className="team-squad-count">
                 👥 <b className={t.purchased.length >= room.limits.minSquad ? "squad-ok" : ""}>{t.purchased.length}</b>/{room.limits.minSquad}
                 {" · ✈ "}{t.purchased.filter((p) => p.country !== "India").length}
-                {t.rtmCards > 0 && t.ownerId ? " · ⚡RTM" : ""}
+                {t.ownerId ? (t.rtmCards > 0 ? ` · ⚡RTM ×${t.rtmCards}` : " · no RTM") : ""}
               </div>
               {t.ownerId && <div className="team-points">⭐ {t.points.total} pts <small>A×{t.points.gradeA} B×{t.points.gradeB}</small></div>}
             </div>
@@ -47,4 +46,3 @@ export default function TeamsPanel({ onOpenTeam }) {
     </section>
   );
 }
- 

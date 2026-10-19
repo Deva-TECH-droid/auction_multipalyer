@@ -103,6 +103,7 @@ io.on("connection", (socket) => {
 
   socket.on("retention:set", (p = {}) => act((room, me) => room.setRetentions(me.id, p.picks)));
   socket.on("retention:lock", (p = {}) => act((room, me) => room.lockRetentions(me.id, !!p.locked)));
+  socket.on("retention:reveal", (p = {}) => act((room, me) => room.startRetentionReveal(me.id, !!p.force)));
 
   socket.on("auction:start", (p = {}) => act((room, me) => room.startAuction(me.id, !!p.force)));
   socket.on("auction:bid", (p = {}) => act((room, me) => room.bid(me.id, p.increment, p.expected)));

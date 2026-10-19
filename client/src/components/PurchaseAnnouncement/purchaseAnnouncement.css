@@ -1,0 +1,387 @@
+/* ─── Cinematic IPL Player Purchase Announcement Styles ─── */
+
+.purchase-announcement-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 45%, var(--pa-team-glow, rgba(58, 34, 93, 0.95)) 0%, rgba(6, 8, 20, 0.95) 60%, #03050c 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  overflow: hidden;
+  user-select: none;
+  animation: paOverlayEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.purchase-announcement-overlay.closing {
+  animation: paOverlayExit 0.45s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+@keyframes paOverlayEnter {
+  from {
+    opacity: 0;
+    transform: scale(1.05);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
+
+@keyframes paOverlayExit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+    filter: blur(12px);
+  }
+}
+
+/* ─── Ambient Stage Lighting & Particles ─── */
+.pa-light-beam {
+  position: absolute;
+  top: -150px;
+  width: 320px;
+  height: 900px;
+  pointer-events: none;
+  opacity: 0.35;
+  filter: blur(45px);
+  mix-blend-mode: screen;
+}
+
+.pa-light-beam.left {
+  left: 5%;
+  background: linear-gradient(135deg, var(--pa-team-color, #ffd700) 0%, transparent 75%);
+  transform: rotate(-25deg);
+  animation: beamSweepLeft 4s infinite ease-in-out alternate;
+}
+
+.pa-light-beam.right {
+  right: 5%;
+  background: linear-gradient(-135deg, #ffd700 0%, transparent 75%);
+  transform: rotate(25deg);
+  animation: beamSweepRight 4s infinite ease-in-out alternate;
+}
+
+@keyframes beamSweepLeft {
+  0% { transform: rotate(-28deg) translateY(-20px); opacity: 0.25; }
+  100% { transform: rotate(-18deg) translateY(20px); opacity: 0.45; }
+}
+
+@keyframes beamSweepRight {
+  0% { transform: rotate(28deg) translateY(-20px); opacity: 0.25; }
+  100% { transform: rotate(18deg) translateY(20px); opacity: 0.45; }
+}
+
+.pa-ambient-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.pa-spark {
+  position: absolute;
+  border-radius: 50%;
+  background: #ffd700;
+  box-shadow: 0 0 10px #ffd700, 0 0 20px #ff9900;
+  animation: sparkRise 3.5s infinite linear;
+}
+
+@keyframes sparkRise {
+  0% { transform: translateY(100vh) scale(0.4); opacity: 0; }
+  20% { opacity: 0.8; }
+  80% { opacity: 0.8; }
+  100% { transform: translateY(-50px) scale(1.2); opacity: 0; }
+}
+
+/* ─── Main Showcase Card ─── */
+.pa-card {
+  position: relative;
+  z-index: 10;
+  max-width: 620px;
+  width: 90%;
+  background: linear-gradient(145deg, rgba(14, 20, 42, 0.94) 0%, rgba(6, 10, 24, 0.98) 100%);
+  border: 2px solid rgba(255, 215, 0, 0.45);
+  border-radius: 24px;
+  padding: 34px 40px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 50px var(--pa-team-glow, rgba(255, 215, 0, 0.35));
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: cardSlam 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardSlam {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(40px);
+    filter: blur(8px);
+  }
+  70% {
+    transform: scale(1.03) translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+/* ─── Stamp Header: SOLD! 🏏 ─── */
+.pa-sold-stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #ff0844 0%, #ff4e50 100%);
+  color: #ffffff;
+  padding: 8px 24px;
+  border-radius: 30px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 25px rgba(255, 8, 68, 0.8), 0 4px 15px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 18px;
+  transform: rotate(-2deg);
+  animation: stampImpact 0.6s cubic-bezier(0.2, 1.4, 0.4, 1) 0.1s both;
+}
+
+.pa-sold-stamp.rtm {
+  background: linear-gradient(135deg, #ffd700 0%, #ff8800 100%);
+  color: #0b0f19;
+  border-color: #ffd700;
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.9);
+}
+
+@keyframes stampImpact {
+  0% {
+    transform: scale(2.2) rotate(-8deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(0.92) rotate(-1deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-2deg);
+    opacity: 1;
+  }
+}
+
+/* ─── Purchasing Team Strap: KOLKATA KNIGHT RIDERS BUY ─── */
+.pa-team-strap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 8px 20px;
+  border-radius: 20px;
+  animation: fadeInDown 0.5s ease-out 0.2s both;
+}
+
+.pa-team-logo-ring {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1.5px solid var(--pa-team-color, #ffd700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 12px var(--pa-team-glow, rgba(255, 215, 0, 0.5));
+}
+
+.pa-team-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.pa-team-headline {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--pa-team-color, #ffd700);
+  text-shadow: 0 0 15px var(--pa-team-glow, rgba(255, 215, 0, 0.5));
+  margin: 0;
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Player Showcase Section ─── */
+.pa-player-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  animation: playerPop 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+@keyframes playerPop {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.pa-avatar-glow-ring {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  border: 3px solid var(--pa-team-color, #ffd700);
+  box-shadow: 0 0 35px var(--pa-team-glow, rgba(255, 215, 0, 0.7)), inset 0 0 20px rgba(0, 0, 0, 0.6);
+  background: #0a1122;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pa-avatar-img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.pa-player-name {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.1;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.9), 0 0 25px rgba(255, 255, 255, 0.3);
+}
+
+.pa-player-subinfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pa-pill {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+/* ─── Final Price Tag: FOR ₹15 CRORE ─── */
+.pa-price-badge {
+  position: relative;
+  background: linear-gradient(135deg, rgba(20, 26, 50, 0.9) 0%, rgba(8, 12, 28, 0.95) 100%);
+  border: 1.5px solid rgba(255, 215, 0, 0.5);
+  border-radius: 18px;
+  padding: 12px 36px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(255, 215, 0, 0.15);
+  overflow: hidden;
+  animation: priceGlow 0.6s ease-out 0.4s both;
+}
+
+@keyframes priceGlow {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pa-price-text {
+  font-family: var(--font-heading, "Montserrat", sans-serif);
+  font-size: 2.2rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffd700;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+  text-transform: uppercase;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.pa-price-text span {
+  color: #ffffff;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+/* Shimmer Sweep Animation */
+.pa-price-badge::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: paShimmer 2s infinite;
+}
+
+@keyframes paShimmer {
+  0% { left: -120%; }
+  60% { left: 160%; }
+  100% { left: 160%; }
+}
+
+/* ─── 5-Second Timer Bar ─── */
+.pa-timer-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  margin-top: 22px;
+  overflow: hidden;
+}
+
+.pa-timer-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--pa-team-color, #ffd700), #ff8800);
+  border-radius: 2px;
+  width: 100%;
+  animation: paTimerCountdown 2.9s linear forwards;
+}
+
+@keyframes paTimerCountdown {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+@media (max-width: 600px) {
+  .pa-card {
+    padding: 24px 20px;
+  }
+  .pa-sold-stamp {
+    font-size: 1.15rem;
+    padding: 6px 18px;
+  }
+  .pa-team-headline {
+    font-size: 0.95rem;
+  }
+  .pa-player-name {
+    font-size: 1.85rem;
+  }
+  .pa-price-text {
+    font-size: 1.7rem;
+  }
+}

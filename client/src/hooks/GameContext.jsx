@@ -31,6 +31,7 @@ export function GameProvider({ children }) {
   const [you, setYou] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [songBanner, setSongBanner] = useState(null);
+  const [purchaseAnnouncement, setPurchaseAnnouncement] = useState(null);
   const [celebrating, setCelebrating] = useState(false);
   const [pulse, setPulse] = useState(null);
   const [rejoining, setRejoining] = useState(!!LS.get("ipl.room"));
@@ -115,6 +116,7 @@ export function GameProvider({ children }) {
           break;
         case "next":
           stopAudio(); // team anthem / intro music ends as soon as the next player comes up
+          setPurchaseAnnouncement(null); // Ensure purchase overlay is cleanly dismissed
           toast(`🏏 Now bidding: ${byId[e.playerId]?.name ?? "next player"}`, "info");
           break;
         case "bid":
@@ -127,8 +129,15 @@ export function GameProvider({ children }) {
             `🔨 ${e.name} ${e.isRTM ? "RTM'd by" : "SOLD to"} ${e.teamName} — ₹${e.price.toFixed(2)} Cr`,
             "success"
           );
-          playHammerSound();
-          setTimeout(() => showSongBanner(e.teamId, e.teamName, e.name), 600);
+          setPurchaseAnnouncement({
+            key: `${e.playerId}-${e.teamId}-${e.price}`,
+            playerId: e.playerId,
+            name: e.name,
+            teamId: e.teamId,
+            teamName: e.teamName,
+            price: e.price,
+            isRTM: !!e.isRTM,
+          });
           break;
         case "unsold":
           toast(`${e.name} went UNSOLD.`, "error");
@@ -195,6 +204,7 @@ export function GameProvider({ children }) {
     startRetention: () => emit("room:start"),
     setRetentions: (picks) => emit("retention:set", { picks }),
     lockRetentions: (locked) => emit("retention:lock", { locked }),
+    startRetentionReveal: (force = false) => emit("retention:reveal", { force }),
     startAuction: (force = false) => emit("auction:start", { force }),
     bid: (increment, expected) => emit("auction:bid", { increment, expected }),
     rtm: (use) => emit("auction:rtm", { use }),
@@ -220,7 +230,7 @@ export function GameProvider({ children }) {
 
   const value = {
     conn, name, room, catalog, catalogById, you, myTeam, isHost,
-    toasts, songBanner, pulse, serverNow, actions, toast, celebrating, setCelebrating,
+    toasts, songBanner, purchaseAnnouncement, setPurchaseAnnouncement, pulse, serverNow, actions, toast, celebrating, setCelebrating,
     rejoining,
   };
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
