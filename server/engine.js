@@ -13,7 +13,7 @@
  */
 const crypto = require("crypto");
 const { TEAMS_CONFIG, PLAYERS_DB, LAST_SEASON_MAP } = require("./data");
-const { buildResults, quality, selectBestXI } = require("./scoring");
+const { buildResults, quality, selectBalancedXI, teamPoints } = require("./scoring");
 const { IPL_STATS } = require("./iplStats");
 
 // Never let a placeholder like "Batsman 3" into a room.
@@ -700,7 +700,7 @@ class Room {
   // evaluation (batting, spin, pace, overseas, balance, middle order) with max 4 overseas players.
   _aiPickXI(team) {
     const squad = team.purchased.map((p) => this.cat(p.playerId));
-    team.playingEleven = selectBestXI(squad, MAX_OVERSEAS_XI);
+    team.playingEleven = selectBalancedXI(squad, MAX_OVERSEAS_XI);
     team.xiSource = "ai";
   }
 
@@ -803,6 +803,7 @@ class Room {
         purchased: t.purchased,
         playingEleven: t.playingEleven,
         xiSource: t.xiSource,
+        points: teamPoints(t.purchased.map((p) => this.cat(p.playerId))),
         rtmCards: t.rtmCards,
       })),
       auction: {

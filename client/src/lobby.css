@@ -230,3 +230,13 @@
 @keyframes pulseBtn { 0%,100% { box-shadow: 0 0 0 rgba(255,23,68,0); } 50% { box-shadow: 0 0 16px rgba(255,23,68,0.7); } }
 .xi-ai-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 8px 0 4px; }
 .xi-source { font-size: 0.78rem; color: var(--gold); font-family: var(--font-display); }
+
+/* ---- batting-order badges + team points ---- */
+.pos-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent); color: #001018; font-family: var(--font-heading); font-size: 0.68rem; font-weight: 900; }
+.xi-legend { font-size: 0.68rem; color: var(--text-dim); margin: 2px 0 6px; line-height: 1.4; }
+.order-note { font-size: 0.6rem; color: var(--text-dim); letter-spacing: 1px; }
+.pts-detail { color: var(--text-dim); font-size: 0.7rem; }
+.team-points { margin-top: 3px; font-size: 0.74rem; color: var(--gold); font-family: var(--font-display); }
+.team-points small { color: var(--text-dim); margin-left: 4px; }
+.pts-title { margin-top: 26px; font-family: var(--font-heading); letter-spacing: 3px; color: var(--gold); }

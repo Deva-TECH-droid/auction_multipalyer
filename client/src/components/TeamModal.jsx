@@ -43,7 +43,8 @@ export default function TeamModal({ teamId, onClose }) {
     onDrop: (e) => onDrop(e, name),
   });
 
-  const card = (p, inXI) => (
+  const posLabel = (i) => (i < 3 ? "Top order" : i < 5 ? "Middle order" : i < 7 ? "All-rounder / WK" : "Bowler");
+  const card = (p, inXI, idx) => (
     <div
       key={p.playerId}
       className={`draggable-player${inXI ? " p11-card" : ""}`}
@@ -53,7 +54,7 @@ export default function TeamModal({ teamId, onClose }) {
       title={editable ? (inXI ? "Click or drag to move back to squad" : "Click or drag into Playing XI") : undefined}
       style={editable ? undefined : { cursor: "default" }}
     >
-      <span className="drag-icon">⠿</span>
+      {inXI ? <span className="pos-badge" title={posLabel(idx)}>{idx + 1}</span> : <span className="drag-icon">⠿</span>}
       <PlayerAvatar name={p.name} size={30} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 700, fontSize: "0.85rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -80,6 +81,10 @@ export default function TeamModal({ teamId, onClose }) {
           <div className="modal-stats">
             <div>Budget Remaining: <span id="modal-budget" className="highlight">₹{team.remaining.toFixed(2)} Cr</span></div>
             <div>Squad Size: <span id="modal-squad-size">{team.purchased.length}</span> players</div>
+            <div title="Grade A = 10, Grade B = 6, others = 1, plus real IPL 2026 performance">
+              Team Points: <span className="highlight">{team.points.total}</span>
+              <small className="pts-detail"> (A×{team.points.gradeA} · B×{team.points.gradeB} · grade {team.points.grade} + IPL {team.points.perf})</small>
+            </div>
           </div>
 
           <div className="team-management-grid">
@@ -90,9 +95,10 @@ export default function TeamModal({ teamId, onClose }) {
               </ul>
             </div>
             <div className="playing11-column">
-              <h3>Playing XI (<span id="p11-count">{xi.length}</span>/11)</h3>
+              <h3>Playing XI (<span id="p11-count">{xi.length}</span>/11) <small className="order-note">batting order</small></h3>
+              <div className="xi-legend">1–3 top order · 4–6 middle order · 6–7 all-rounders / keeper · 8–11 bowlers (2+ spinners)</div>
               <div id="playing-11-list" className={`playing-11-grid dropzone${over === "p11" ? " drag-over" : ""}`} {...zone("p11")}>
-                {xiPlayers.map((p) => card(p, true))}
+                {xiPlayers.map((p, i) => card(p, true, i))}
               </div>
               {editable && (
                 <div className="xi-ai-row">

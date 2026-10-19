@@ -94,6 +94,29 @@ export default function ResultsBoard({ onOpenTeam }) {
         </table>
       </div>
       <p className="results-foot">Tap a row to see why each mark was given.</p>
+
+      <h3 className="pts-title">⭐ TEAM POINTS</h3>
+      <p className="results-foot">
+        Grade A player = 10 pts · Grade B = 6 · others = 1 — plus real IPL 2026 performance
+        (1 pt per 30 runs, 1 pt per wicket) where stats are published. More Grade A/B players ⇒ more points.
+      </p>
+      <div className="table-scroll">
+        <table className="points-table results-table">
+          <thead><tr><th>#</th><th>Team</th><th>Owner</th><th>Grade A</th><th>Grade B</th><th>Grade pts</th><th>IPL pts</th><th>TOTAL</th></tr></thead>
+          <tbody>
+            {[...room.teams].filter((t) => t.ownerId).sort((a, b) => b.points.total - a.points.total).map((t, i) => (
+              <tr key={t.id} className={myTeam?.id === t.id ? "me-row" : ""}>
+                <td>{i + 1}</td>
+                <td className="team-name-cell"><span className={`team-pill ${t.id}-color`}>{t.name}</span></td>
+                <td>{t.ownerName}</td>
+                <td>{t.points.gradeA}</td><td>{t.points.gradeB}</td>
+                <td>{t.points.grade}</td><td>{t.points.perf}</td>
+                <td className="pts-cell">{t.points.total}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -159,3 +159,136 @@ function selectBestXI(players, maxOverseas = 4) {
 }
 
 module.exports = { evaluateTeam, buildResults, profile, quality, selectBestXI };
+
+// ════════════════════════════════════════════════════════════════════════════
+//  TEAM POINTS — grade + real IPL 2026 performance (never invented)
+//    Grade A player = 10 pts · Grade B = 6 pts · every other player = 1 pt
+//    Performance (only where real IPL 2026 stats exist in iplStats.js):
+//      1 pt per 30 runs · 1 pt per wicket · +2 if S.R. ≥ 150 with 200+ runs
+//      +2 if economy ≤ 8.5 with 10+ wickets
+//    Players without published IPL 2026 stats earn grade points only.
+// ════════════════════════════════════════════════════════════════════════════
+const GRADE_POINTS = { "Grade A": 10, "Grade B": 6 };
+
+function playerPoints(p) {
+  const grade = GRADE_POINTS[p.category] || 1;
+  const s = p.stats;
+  let perf = 0;
+  if (s) {
+    if (s.runs) perf += s.runs / 30;
+    if (s.wkts) perf += s.wkts;
+    if (s.sr && s.runs >= 200 && s.sr >= 150) perf += 2;
+    if (s.eco && s.wkts >= 10 && s.eco <= 8.5) perf += 2;
+  }
+  return { grade, perf: r2(perf) };
+}
+
+// players: catalog entries of everyone the franchise owns (retained + bought)
+function teamPoints(players) {
+  let gradePts = 0, perfPts = 0, gradeA = 0, gradeB = 0;
+  for (const p of players) {
+    const pp = playerPoints(p);
+    gradePts += pp.grade; perfPts += pp.perf;
+    if (p.category === "Grade A") gradeA++;
+    if (p.category === "Grade B") gradeB++;
+  }
+  return { total: r2(gradePts + perfPts), grade: r2(gradePts), perf: r2(perfPts), gradeA, gradeB };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  AI BALANCED PLAYING XI (returned in BATTING ORDER)
+//    1-3  openers / top-order batters      4-6  middle order (+ keeper allowed anywhere up to 7)
+//    6-7  all-rounders (at least 2)        8-11 specialist bowlers, at least 2 of them spinners
+//    max 4 overseas · only players from the squad passed in
+// ════════════════════════════════════════════════════════════════════════════
+function selectBalancedXI(players, maxOverseas = 4) {
+  const P = players.map(profile);
+  const grp = (p) => (p.role === "All-Rounder" ? "ar" : p.role === "Bowler" ? "bowl" : "bat");
+  const val = (p) => {
+    const g = grp(p);
+    if (g === "bat") return p.bat + (p.middle ? 0 : 0.02);
+    if (g === "ar") return 0.5 * (p.bat + p.bowl) + 0.1 * Math.min(p.bat, p.bowl);
+    return p.bowl;
+  };
+  const byVal = (a, b) => val(b) - val(a) || a.name.localeCompare(b.name);
+  const G = { bat: P.filter((p) => grp(p) === "bat"), ar: P.filter((p) => grp(p) === "ar"), bowl: P.filter((p) => grp(p) === "bowl") };
+
+  if (P.length <= 11) return orderXI(P).map((p) => p.id);
+
+  // How many of each kind: 5 batters · 2 all-rounders · 4 bowlers (shift when the squad lacks a kind)
+  let nAR = Math.min(2, G.ar.length);
+  let nBowl = Math.min(G.bowl.length, 4 + (2 - nAR));
+  let nBat = 11 - nAR - nBowl;
+  if (nBat > G.bat.length) {
+    let need = nBat - G.bat.length;
+    nBat = G.bat.length;
+    const moreAR = Math.min(need, G.ar.length - nAR); nAR += moreAR; need -= moreAR;
+    nBowl += Math.min(need, G.bowl.length - nBowl);
+  }
+  const target = { bat: nBat, ar: nAR, bowl: nBowl };
+
+  const chosen = [];
+  let os = 0;
+  const count = (g) => chosen.filter((p) => grp(p) === g).length;
+  const canAdd = (p) => !chosen.includes(p) && (!p.overseas || os < maxOverseas);
+  const add = (p) => { chosen.push(p); if (p.overseas) os++; };
+
+  // 1) a wicketkeeper (best one)  2) two spinners (specialist bowlers)
+  for (const w of G.bat.filter((p) => p.role === "Wicketkeeper").sort(byVal)) {
+    if (target.bat > 0 && canAdd(w)) { add(w); break; }
+  }
+  const spinners = G.bowl.filter((p) => p.bowlType === "spin").sort(byVal);
+  for (const s of spinners) {
+    if (count("bowl") >= Math.min(2, target.bowl)) break;
+    if (canAdd(s)) add(s);
+  }
+  // 3) best remaining players overall, respecting the group targets and the overseas cap
+  for (const p of [...P].sort(byVal)) {
+    if (chosen.length >= 11) break;
+    if (count(grp(p)) < target[grp(p)] && canAdd(p)) add(p);
+  }
+  // 4) still short (overseas cap / thin squad)? take the best available of any kind
+  for (const p of [...P].sort(byVal)) {
+    if (chosen.length >= 11) break;
+    if (canAdd(p)) add(p);
+  }
+
+  // Local search: swap players of the SAME kind while the XI scores better (balance rules stay intact)
+  const hasWK = G.bat.some((p) => p.role === "Wicketkeeper");
+  const spinWanted = Math.min(2, target.bowl, spinners.length);
+  const valid = (xi) =>
+    xi.filter((p) => p.overseas).length <= maxOverseas &&
+    (!hasWK || xi.some((p) => p.role === "Wicketkeeper")) &&
+    xi.filter((p) => p.role === "Bowler" && p.bowlType === "spin").length >= spinWanted;
+  const score = (xi) => evaluateTeam(xi).total * 1000 + xi.reduce((a, p) => a + val(p), 0);
+  let xi = chosen;
+  let best = score(xi);
+  for (let pass = 0; pass < 40; pass++) {
+    let move = null;
+    for (let i = 0; i < xi.length; i++) {
+      for (const cand of P) {
+        if (xi.includes(cand) || grp(cand) !== grp(xi[i])) continue;
+        const trial = xi.slice(); trial[i] = cand;
+        if (!valid(trial)) continue;
+        const v = score(trial);
+        if (v > best + 1e-9 && (!move || v > move.v)) move = { v, trial };
+      }
+    }
+    if (!move) break;
+    xi = move.trial; best = move.v;
+  }
+  return orderXI(xi).map((p) => p.id);
+}
+
+// Batting order: top 3 = top-order batters, then middle order, then all-rounders (6-7), then bowlers.
+function orderXI(xi) {
+  const grp = (p) => (p.role === "All-Rounder" ? "ar" : p.role === "Bowler" ? "bowl" : "bat");
+  const bats = xi.filter((p) => grp(p) === "bat").sort((a, b) => Number(a.middle) - Number(b.middle) || b.bat - a.bat);
+  const ars = xi.filter((p) => grp(p) === "ar").sort((a, b) => b.bat - a.bat);
+  const bowls = xi.filter((p) => grp(p) === "bowl").sort((a, b) => b.bat - a.bat || b.bowl - a.bowl);
+  return [...bats, ...ars, ...bowls];
+}
+
+module.exports.teamPoints = teamPoints;
+module.exports.playerPoints = playerPoints;
+module.exports.selectBalancedXI = selectBalancedXI;
