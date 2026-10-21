@@ -152,7 +152,7 @@ sequenceDiagram
     end
 ```
 
-Each franchise gets **1 RTM card**. Use it wisely.
+Each franchise gets **2 RTM if they don't retain any player , if they retain 1 player they eill get one RTM , if they retain both players then there is no RTM**. Use it wisely.
 
 ---
 
