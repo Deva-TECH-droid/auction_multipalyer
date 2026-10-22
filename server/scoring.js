@@ -10,6 +10,18 @@
  *
  * Player quality comes from the player's base price (a fixed star-rating, not what he was
  * sold for): 2.0 Cr -> 1.00, 1.0 Cr -> 0.61, 0.5 Cr -> 0.42, 0.2 Cr -> 0.30.
+ *
+ * AI TEAM ANALYSIS (100-point scale):
+ *   Batting Power         15   depth & quality of top-order + middle-order batters
+ *   Bowling Attack        15   overall bowling quality (spin + pace combined)
+ *   All-Rounders          12   depth & quality of genuine all-rounders
+ *   Wicketkeeping         10   quality of keeper(s)
+ *   Fielding/Athleticism  10   fielding impact from dynamic fielders
+ *   Overseas Utilization  10   how well the 4 overseas slots are used
+ *   Team Balance           8   structural balance (roles, positions)
+ *   Squad Depth            8   bench strength beyond the Playing XI
+ *   Captain Strength       7   captain's leadership & performance profile
+ *   Budget Efficiency      5   value for money (quality per crore spent)
  */
 
 const SPIN = new Set([
@@ -34,6 +46,28 @@ const MIDDLE = new Set([
   "Dinesh Karthik", "Rahul Tripathi", "Ajinkya Rahane", "Cameron Green", "Mitchell Marsh", "Jimmy Neesham",
   "Najibullah Zadran", "Sam Billings", "Alex Carey", "Matthew Wade", "Shai Hope",
 ]);
+
+// Premium fielders — known for exceptional ground fielding and catching
+const ELITE_FIELDERS = new Set([
+  "Suryakumar Yadav", "Virat Kohli", "Hardik Pandya", "Ravindra Jadeja", "AB de Villiers",
+  "Shreyas Iyer", "Shubman Gill", "Yashasvi Jaiswal", "Riyan Parag", "Sai Sudharsan",
+  "Faf du Plessis", "David Warner", "Travis Head", "Mitchell Marsh", "Glenn Maxwell",
+  "Ben Stokes", "Jos Buttler", "Sam Curran", "Liam Livingstone", "Will Jacks",
+  "KL Rahul", "K.L. Rahul", "Axar Patel", "Washington Sundar", "Pat Cummins",
+  "Abhishek Sharma", "Nitish Kumar Reddy", "Tilak Varma", "Rinku Singh",
+]);
+
+// Quality captain profile — players known for strong leadership + performance
+const CAPTAIN_QUALITY = {
+  "Rohit Sharma": 0.95, "Virat Kohli": 0.93, "MS Dhoni": 0.97, "Pat Cummins": 0.90,
+  "Hardik Pandya": 0.88, "Ravindra Jadeja": 0.85, "Jasprit Bumrah": 0.82,
+  "Shubman Gill": 0.84, "Shreyas Iyer": 0.85, "Axar Patel": 0.83,
+  "K.L. Rahul": 0.84, "Rishabh Pant": 0.87, "Jos Buttler": 0.88,
+  "Kane Williamson": 0.89, "Ben Stokes": 0.92, "Faf du Plessis": 0.86,
+  "David Warner": 0.85, "Travis Head": 0.80, "Riyan Parag": 0.76,
+  "Sanju Samson": 0.78, "Heinrich Klaasen": 0.82, "Travis Head": 0.80,
+  "Ruturaj Gaikwad": 0.80, "Yashasvi Jaiswal": 0.76, "Suryakumar Yadav": 0.80,
+};
 
 const quality = (base) => 0.3 + (0.7 * (base - 0.2)) / 1.8;
 
@@ -292,3 +326,285 @@ function orderXI(xi) {
 module.exports.teamPoints = teamPoints;
 module.exports.playerPoints = playerPoints;
 module.exports.selectBalancedXI = selectBalancedXI;
+
+// ════════════════════════════════════════════════════════════════════════════
+//  AI TEAM ANALYSIS — 100-point comprehensive squad rating
+//    Called after the auction ends or on-demand.
+//    Returns: { score, breakdown, strengths, weaknesses, bestBuy, stealBuy, worstBuy }
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Analyse a franchise's entire squad (purchased players with catalog data merged).
+ * @param {Object} params
+ * @param {string} params.teamId
+ * @param {string} params.teamName
+ * @param {string} params.teamFull
+ * @param {Array}  params.purchased   — team.purchased entries (playerId, name, role, country, price, isRTM, isRetention)
+ * @param {Array}  params.catalog     — full catalog array so we can look up base price / category
+ * @param {number} params.remaining   — leftover budget
+ * @param {number} params.startPurse  — original budget (e.g. 100 Cr)
+ * @returns analysis object
+ */
+function analyseTeam({ teamId, teamName, teamFull, purchased, catalog, remaining, startPurse = 100 }) {
+  // Merge purchase records with catalog data
+  const catMap = new Map(catalog.map((p) => [p.id, p]));
+  const squad = purchased.map((pu) => {
+    const cat = catMap.get(pu.playerId) || {};
+    return { ...cat, ...pu, catalogBase: cat.base || pu.base || 0.2 };
+  }).filter((p) => p.name);
+
+  const total = squad.length;
+  if (total === 0) return _emptyAnalysis(teamId, teamName, teamFull);
+
+  // ── 1. Batting Power (15 pts) ─────────────────────────────────────────
+  const batters = squad.filter((p) => p.role === "Batsman" || p.role === "Wicketkeeper" || p.role === "All-Rounder");
+  const pureBatters = squad.filter((p) => p.role === "Batsman" || p.role === "Wicketkeeper");
+  const batQuality = batters.map((p) => {
+    const q = quality(p.catalogBase);
+    return p.role === "All-Rounder" ? 0.75 * q : q;
+  });
+  batQuality.sort((a, b) => b - a);
+  const top8Bat = batQuality.slice(0, 8);
+  const batScore = Math.min(15, (top8Bat.reduce((a, b) => a + b, 0) / 8) * 15);
+  const batExplain = [];
+  const gradABat = squad.filter((p) => (p.category === "Grade A" || p.category === "Grade B") && (p.role === "Batsman" || p.role === "Wicketkeeper" || p.role === "All-Rounder"));
+  if (gradABat.length >= 2) batExplain.push(`${gradABat.length} marquee bat/AR players`);
+  if (pureBatters.length < 4) batExplain.push("thin batting depth");
+  else if (pureBatters.length >= 6) batExplain.push("excellent batting depth (6+ batters)");
+
+  // ── 2. Bowling Attack (15 pts) ────────────────────────────────────────
+  const bowlers = squad.filter((p) => p.role === "Bowler" || p.role === "All-Rounder");
+  const pureBowlers = squad.filter((p) => p.role === "Bowler");
+  const bowlQuality = bowlers.map((p) => {
+    const q = quality(p.catalogBase);
+    return p.role === "All-Rounder" ? 0.7 * q : q;
+  });
+  bowlQuality.sort((a, b) => b - a);
+  const top6Bowl = bowlQuality.slice(0, 6);
+  const bowlScore = Math.min(15, (top6Bowl.reduce((a, b) => a + b, 0) / 6) * 15);
+  const spinnerCount = squad.filter((p) => SPIN.has(p.name)).length;
+  const pacerCount = pureBowlers.filter((p) => !SPIN.has(p.name)).length;
+  const bowlExplain = [];
+  if (spinnerCount >= 2 && pacerCount >= 2) bowlExplain.push("well-rounded attack (spin + pace)");
+  if (spinnerCount === 0) bowlExplain.push("no specialist spinner");
+  if (pacerCount === 0) bowlExplain.push("no specialist pacer");
+  if (squad.some((p) => ["Jasprit Bumrah", "Rashid Khan", "Pat Cummins", "Mitchell Starc"].includes(p.name))) {
+    bowlExplain.push("world-class bowling spearhead");
+  }
+
+  // ── 3. All-Rounders (12 pts) ───────────────────────────────────────────
+  const allRounders = squad.filter((p) => p.role === "All-Rounder");
+  const arQuality = allRounders.map((p) => quality(p.catalogBase));
+  arQuality.sort((a, b) => b - a);
+  const top3AR = arQuality.slice(0, 3);
+  const arScore = Math.min(12, (top3AR.length === 0 ? 0 : (top3AR.reduce((a, b) => a + b, 0) / 3) * 12));
+  const arExplain = [];
+  if (allRounders.length === 0) arExplain.push("no all-rounders — major gap");
+  else if (allRounders.length === 1) arExplain.push("only 1 all-rounder — risky");
+  else if (allRounders.length >= 3) arExplain.push(`${allRounders.length} genuine all-rounders`);
+
+  // ── 4. Wicketkeeping (10 pts) ─────────────────────────────────────────
+  const keepers = squad.filter((p) => p.role === "Wicketkeeper");
+  const keeperQuality = keepers.map((p) => quality(p.catalogBase));
+  keeperQuality.sort((a, b) => b - a);
+  const wkScore = Math.min(10, keeperQuality.length === 0 ? 0 : keeperQuality[0] * 10 + (keeperQuality[1] ? keeperQuality[1] * 2 : 0));
+  const wkExplain = [];
+  if (keepers.length === 0) wkExplain.push("no wicketkeeper — critical gap");
+  else if (keepers.length >= 2) wkExplain.push("good keeper depth");
+  const eliteKeepers = keepers.filter((p) => ["MS Dhoni", "Rishabh Pant", "K.L. Rahul", "Heinrich Klaasen", "Jos Buttler", "Sanju Samson"].includes(p.name));
+  if (eliteKeepers.length > 0) wkExplain.push(`world-class keeper: ${eliteKeepers.map((p) => p.name).join(", ")}`);
+
+  // ── 5. Fielding/Athleticism (10 pts) ─────────────────────────────────
+  const eliteFieldersInSquad = squad.filter((p) => ELITE_FIELDERS.has(p.name));
+  const fieldScore = Math.min(10, (eliteFieldersInSquad.length / 5) * 10);
+  const fieldExplain = [];
+  if (eliteFieldersInSquad.length >= 5) fieldExplain.push("outstanding fielding unit");
+  else if (eliteFieldersInSquad.length >= 3) fieldExplain.push("good fielding depth");
+  else fieldExplain.push("average fielding quality");
+
+  // ── 6. Overseas Utilization (10 pts) ─────────────────────────────────
+  const overseasPlayers = squad.filter((p) => p.country !== "India");
+  const osQuality = overseasPlayers.map((p) => quality(p.catalogBase));
+  osQuality.sort((a, b) => b - a);
+  const top4OS = osQuality.slice(0, 4);
+  const osScore = Math.min(10, top4OS.length === 0 ? 0 : (top4OS.reduce((a, b) => a + b, 0) / 4) * 10);
+  const osExplain = [];
+  if (overseasPlayers.length < 4) osExplain.push(`only ${overseasPlayers.length} overseas players — slots underused`);
+  else if (overseasPlayers.length >= 4) osExplain.push(`${overseasPlayers.length} overseas players — good variety`);
+  const eliteOS = overseasPlayers.filter((p) => quality(p.catalogBase) >= 0.85);
+  if (eliteOS.length >= 2) osExplain.push(`premium OS players: ${eliteOS.slice(0, 2).map((p) => p.name).join(", ")}`);
+
+  // ── 7. Team Balance (8 pts) ───────────────────────────────────────────
+  let balanceScore = 8;
+  const balExplain = [];
+  if (keepers.length < 1) { balanceScore -= 2; balExplain.push("no keeper (-2)"); }
+  if (allRounders.length < 2) { balanceScore -= 1.5; balExplain.push("< 2 all-rounders (-1.5)"); }
+  if (pureBatters.length < 4) { balanceScore -= 1.5; balExplain.push("< 4 specialist batters (-1.5)"); }
+  if (pureBowlers.length < 4) { balanceScore -= 1.5; balExplain.push("< 4 specialist bowlers (-1.5)"); }
+  if (spinnerCount < 1) { balanceScore -= 0.5; balExplain.push("no spinner (-0.5)"); }
+  if (balExplain.length === 0) balExplain.push("excellent structural balance");
+  balanceScore = Math.max(0, balanceScore);
+
+  // ── 8. Squad Depth (8 pts) ─────────────────────────────────────────────
+  const depthScore = Math.min(8, total >= 15 ? 8 : (total / 15) * 8);
+  const depthExplain = [];
+  if (total >= 18) depthExplain.push(`deep squad (${total} players)`);
+  else if (total >= 15) depthExplain.push(`adequate squad (${total} players)`);
+  else depthExplain.push(`thin squad — only ${total} players`);
+
+  // ── 9. Captain Strength (7 pts) ────────────────────────────────────────
+  // Find likely captain — highest-quality Grade A/B player or first purchased
+  const sortedByQuality = [...squad].sort((a, b) => quality(b.catalogBase) - quality(a.catalogBase));
+  const likelyCaptain = sortedByQuality[0];
+  const captainQ = likelyCaptain ? (CAPTAIN_QUALITY[likelyCaptain.name] || quality(likelyCaptain.catalogBase)) : 0.5;
+  const captainScore = Math.min(7, captainQ * 7);
+  const capExplain = [];
+  if (likelyCaptain) {
+    capExplain.push(`lead player: ${likelyCaptain.name}`);
+    if (CAPTAIN_QUALITY[likelyCaptain.name]) capExplain.push("proven IPL leader");
+  }
+
+  // ── 10. Budget Efficiency (5 pts) ────────────────────────────────────
+  const spent = startPurse - remaining;
+  const totalSquadQuality = squad.reduce((a, p) => a + quality(p.catalogBase), 0);
+  const valuePerCrore = spent > 0 ? totalSquadQuality / spent : 0;
+  // Benchmark: 0.03 quality/Cr is decent, 0.05+ is excellent
+  const efficiencyScore = Math.min(5, (valuePerCrore / 0.05) * 5);
+  const effExplain = [];
+  if (valuePerCrore >= 0.05) effExplain.push("excellent value for money");
+  else if (valuePerCrore >= 0.03) effExplain.push("fair budget efficiency");
+  else effExplain.push("overpaid relative to quality");
+
+  // ── Final score ────────────────────────────────────────────────────────
+  const rawScore = batScore + bowlScore + arScore + wkScore + fieldScore + osScore + balanceScore + depthScore + captainScore + efficiencyScore;
+  const score = Math.round(Math.min(100, rawScore));
+
+  const breakdown = {
+    batting:     { score: r2(batScore),      max: 15, label: "Batting Power",         explain: batExplain,    whyPoints: _whyPoints(batScore, 15, batExplain),  whyDeducted: _whyDeducted(batScore, 15, pureBatters.length < 4 ? ["thin batting depth"] : []) },
+    bowling:     { score: r2(bowlScore),     max: 15, label: "Bowling Attack",         explain: bowlExplain,   whyPoints: _whyPoints(bowlScore, 15, bowlExplain), whyDeducted: _whyDeducted(bowlScore, 15, spinnerCount === 0 ? ["no specialist spinner"] : pacerCount === 0 ? ["no specialist pacer"] : []) },
+    allRounders: { score: r2(arScore),       max: 12, label: "All-Rounders",           explain: arExplain,     whyPoints: _whyPoints(arScore, 12, arExplain),    whyDeducted: _whyDeducted(arScore, 12, allRounders.length < 2 ? ["insufficient all-rounder depth"] : []) },
+    wicketkeeping:{ score: r2(wkScore),      max: 10, label: "Wicketkeeping",          explain: wkExplain,     whyPoints: _whyPoints(wkScore, 10, wkExplain),    whyDeducted: _whyDeducted(wkScore, 10, keepers.length === 0 ? ["no wicketkeeper"] : []) },
+    fielding:    { score: r2(fieldScore),    max: 10, label: "Fielding",               explain: fieldExplain,  whyPoints: _whyPoints(fieldScore, 10, fieldExplain), whyDeducted: _whyDeducted(fieldScore, 10, eliteFieldersInSquad.length < 3 ? ["few elite fielders"] : []) },
+    overseas:    { score: r2(osScore),       max: 10, label: "Overseas Utilization",   explain: osExplain,     whyPoints: _whyPoints(osScore, 10, osExplain),    whyDeducted: _whyDeducted(osScore, 10, overseasPlayers.length < 4 ? ["overseas slots underused"] : []) },
+    balance:     { score: r2(balanceScore),  max: 8,  label: "Team Balance",           explain: balExplain,    whyPoints: _whyPoints(balanceScore, 8, balExplain.filter((s) => !s.includes("("))), whyDeducted: balExplain.filter((s) => s.includes("(-")) },
+    depth:       { score: r2(depthScore),    max: 8,  label: "Squad Depth",            explain: depthExplain,  whyPoints: _whyPoints(depthScore, 8, depthExplain), whyDeducted: _whyDeducted(depthScore, 8, total < 15 ? [`only ${total} players`] : []) },
+    captain:     { score: r2(captainScore),  max: 7,  label: "Captain Strength",       explain: capExplain,    whyPoints: _whyPoints(captainScore, 7, capExplain), whyDeducted: [] },
+    efficiency:  { score: r2(efficiencyScore),max: 5, label: "Budget Efficiency",      explain: effExplain,    whyPoints: _whyPoints(efficiencyScore, 5, effExplain), whyDeducted: valuePerCrore < 0.03 ? ["overpaid for quality received"] : [] },
+  };
+
+  // ── Strengths & Weaknesses ────────────────────────────────────────────
+  const sortedAreas = Object.entries(breakdown).sort((a, b) => (b[1].score / b[1].max) - (a[1].score / a[1].max));
+  const strengths = sortedAreas.slice(0, 3).map(([k, v]) => `${v.label}: ${v.score}/${v.max} — ${v.explain[0] || "strong"}`);
+  const weaknesses = sortedAreas.slice(-3).reverse().map(([k, v]) => `${v.label}: ${v.score}/${v.max} — ${v.explain[0] || "needs improvement"}`);
+
+  // ── Best Buy / Steal Buy / Worst Buy ──────────────────────────────────
+  const { bestBuy, stealBuy, worstBuy } = computeBuys(squad);
+
+  return {
+    teamId, teamName, teamFull, score,
+    breakdown, strengths, weaknesses,
+    bestBuy, stealBuy, worstBuy,
+    squadSize: total, remaining,
+  };
+}
+
+function _whyPoints(score, max, reasons) {
+  if (score >= max * 0.85) return [`Full marks awarded — ${reasons[0] || "excellent in this area"}`];
+  if (score >= max * 0.6) return [`Good score — ${reasons[0] || "solid performance in this area"}`];
+  return reasons.slice(0, 2);
+}
+
+function _whyDeducted(score, max, reasons) {
+  if (score >= max * 0.85 || reasons.length === 0) return [];
+  const deducted = r2(max - score);
+  return reasons.map((r) => `-${deducted} pts: ${r}`);
+}
+
+/**
+ * Identify best buy (highest quality per crore), steal (biggest quality vs price gap),
+ * and worst buy (most overpaid) in a squad.
+ */
+function computeBuys(squad) {
+  if (squad.length === 0) return { bestBuy: null, stealBuy: null, worstBuy: null };
+
+  // Filter out retentions (they have fixed prices unrelated to auction value)
+  const auctioned = squad.filter((p) => !p.isRetention && p.price > 0);
+  const all = squad;
+
+  // Quality score for each player
+  const withValue = all.map((p) => {
+    const q = quality(p.catalogBase || p.base || 0.2);
+    const paid = p.price || 0.2;
+    const expectedPrice = p.catalogBase * 8; // rough market value (8x base = typical IPL multiple)
+    const valueRatio = q / Math.max(paid, 0.2); // quality per crore
+    const bargainScore = expectedPrice > 0 ? (expectedPrice - paid) / expectedPrice : 0; // how much below expected
+    return { ...p, q, paid, valueRatio, bargainScore };
+  });
+
+  // Best Buy = highest absolute quality in the squad
+  const bestBuy = [...withValue].sort((a, b) => b.q - a.q)[0] || null;
+
+  // Steal Buy = biggest positive bargain (high quality, low price relative to worth)
+  const steals = withValue.filter((p) => !p.isRetention);
+  const stealBuy = steals.length > 0 ? [...steals].sort((a, b) => b.bargainScore * b.q - a.bargainScore * a.q)[0] : withValue[0] || null;
+
+  // Worst Buy = most overpaid relative to quality (only auctioned players)
+  const worstCandidates = auctioned.length > 0 ? auctioned : all;
+  const worstBuy = worstCandidates.length > 0 ? [...worstCandidates].sort((a, b) => {
+    const aOver = a.price / Math.max(quality(a.catalogBase || 0.2), 0.01);
+    const bOver = b.price / Math.max(quality(b.catalogBase || 0.2), 0.01);
+    return bOver - aOver;
+  })[0] : null;
+
+  const fmt = (p) => p ? {
+    name: p.name, role: p.role, country: p.country,
+    price: p.price, quality: r2(p.q || quality(p.catalogBase || p.base || 0.2)),
+    reason: _buyReason(p),
+  } : null;
+
+  return {
+    bestBuy: fmt(bestBuy),
+    stealBuy: fmt(stealBuy),
+    worstBuy: fmt(worstBuy),
+  };
+}
+
+function _buyReason(p) {
+  const q = p.q || quality(p.catalogBase || p.base || 0.2);
+  const paid = p.price || 0;
+  if (p.isRetention) return `retained at ₹${paid.toFixed(2)} Cr — franchise priority`;
+  if (q >= 0.9 && paid <= 5) return `world-class player at ₹${paid.toFixed(2)} Cr — exceptional steal`;
+  if (q >= 0.85) return `elite quality (q=${r2(q)}) at ₹${paid.toFixed(2)} Cr`;
+  if (paid > 15 && q < 0.7) return `₹${paid.toFixed(2)} Cr is steep for this quality profile`;
+  if (paid > 10 && q < 0.6) return `significantly overpaid at ₹${paid.toFixed(2)} Cr`;
+  return `₹${paid.toFixed(2)} Cr — fair market price`;
+}
+
+/**
+ * Build the AI leaderboard: analyse all owned franchises and rank them.
+ * @param {Array} ownedTeams  — each: { id, name, full, color, purchased, remaining }
+ * @param {Array} catalog     — full catalog
+ * @param {number} startPurse
+ * @returns { leaderboard: [...], strongest: teamId }
+ */
+function buildTeamLeaderboard(ownedTeams, catalog, startPurse = 100) {
+  const analyses = ownedTeams.map((t) =>
+    analyseTeam({ teamId: t.id, teamName: t.name, teamFull: t.full, purchased: t.purchased, catalog, remaining: t.remaining, startPurse })
+  );
+  analyses.sort((a, b) => b.score - a.score);
+  analyses.forEach((a, i) => { a.rank = i + 1; });
+  return { leaderboard: analyses, strongest: analyses[0]?.teamId || null };
+}
+
+function _emptyAnalysis(teamId, teamName, teamFull) {
+  return {
+    teamId, teamName, teamFull, score: 0,
+    breakdown: {}, strengths: [], weaknesses: ["No players purchased yet"],
+    bestBuy: null, stealBuy: null, worstBuy: null,
+    squadSize: 0, remaining: 0,
+  };
+}
+
+module.exports.analyseTeam = analyseTeam;
+module.exports.buildTeamLeaderboard = buildTeamLeaderboard;
+module.exports.computeBuys = computeBuys;

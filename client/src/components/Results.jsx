@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useGame } from "../hooks/GameContext";
+import TeamAnalysisPanel from "./TeamAnalysis";
 
 const COLS = [
   ["batting", "BAT"], ["spin", "SPIN"], ["pace", "FAST"],
@@ -11,32 +12,46 @@ export function EndedPanel({ onOpenTeam }) {
   const { room, myTeam, isHost, actions } = useGame();
   const owned = room.teams.filter((t) => t.ownerId);
   const min = room.limits.minSquad;
+  const [activeTab, setActiveTab] = useState("squads"); // squads | analysis
+
   return (
-    <div id="ended-state" className="welcome-box glass-card results-box">
+    <div id="ended-state" className="welcome-box glass-card results-box wide">
       <span className="cricket-icon">🏁</span>
       <h2>AUCTION FINISHED</h2>
       <p>
         The auction is over and <b>AI has picked the strongest Playing XI</b> for every franchise from its own players. You can still edit yours (or ask AI again) — the result is judged on it
         (batting, spin, pace, overseas, balance and middle order — 30 marks).
       </p>
-      <ul className="squad-status">
-        {owned.map((t) => (
-          <li key={t.id}>
-            <span className={`team-pill ${t.id}-color`}>{t.name}</span>
-            <span className="ss-owner">{t.ownerName}</span>
-            <span className={`ss-count${t.purchased.length >= min ? " ok" : ""}`}>{t.purchased.length} players</span>
-            <span className="ss-xi">XI {t.playingEleven.length}/11</span>
-          </li>
-        ))}
-      </ul>
-      <div className="ended-actions">
-        {myTeam && <button className="btn-small" onClick={() => onOpenTeam(myTeam.id)}>🏏 Set my Playing XI</button>}
-        {isHost ? (
-          <button id="show-result-btn" className="btn-primary glow-btn" onClick={actions.showResults}>🏆 SHOW RESULT</button>
-        ) : (
-          <p className="wr-wait">⏳ Waiting for the host to reveal the result…</p>
-        )}
+
+      <div className="results-tabs">
+        <button className={`tab-btn${activeTab === "squads" ? " active" : ""}`} onClick={() => setActiveTab("squads")}>📋 Squads</button>
+        <button className={`tab-btn${activeTab === "analysis" ? " active" : ""}`} onClick={() => setActiveTab("analysis")}>🤖 AI Analysis</button>
       </div>
+
+      {activeTab === "squads" && (
+        <>
+          <ul className="squad-status">
+            {owned.map((t) => (
+              <li key={t.id}>
+                <span className={`team-pill ${t.id}-color`}>{t.name}</span>
+                <span className="ss-owner">{t.ownerName}</span>
+                <span className={`ss-count${t.purchased.length >= min ? " ok" : ""}`}>{t.purchased.length} players</span>
+                <span className="ss-xi">XI {t.playingEleven.length}/11</span>
+              </li>
+            ))}
+          </ul>
+          <div className="ended-actions">
+            {myTeam && <button className="btn-small" onClick={() => onOpenTeam(myTeam.id)}>🏏 Set my Playing XI</button>}
+            {isHost ? (
+              <button id="show-result-btn" className="btn-primary glow-btn" onClick={actions.showResults}>🏆 SHOW RESULT</button>
+            ) : (
+              <p className="wr-wait">⏳ Waiting for the host to reveal the result…</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {activeTab === "analysis" && <TeamAnalysisPanel />}
     </div>
   );
 }
@@ -45,6 +60,7 @@ export function EndedPanel({ onOpenTeam }) {
 export default function ResultsBoard({ onOpenTeam }) {
   const { room, myTeam, setCelebrating } = useGame();
   const [open, setOpen] = useState(null);
+  const [activeTab, setActiveTab] = useState("results"); // results | points | analysis
   const res = room.results;
   if (!res) return null;
 
@@ -52,71 +68,124 @@ export default function ResultsBoard({ onOpenTeam }) {
     <div id="results-state" className="welcome-box glass-card results-box wide">
       <span className="cricket-icon">🏆</span>
       <h2>FINAL RESULT</h2>
-      <p>Each Playing XI is marked out of 30 — 5 each for batting, spin, fast bowling, overseas players, team balance and middle order.</p>
       <button className="btn-small" onClick={() => setCelebrating(true)}>🎉 Replay celebration</button>
 
-      <div className="table-scroll">
-        <table className="points-table results-table">
-          <thead>
-            <tr>
-              <th>#</th><th>Team</th><th>Owner</th>
-              {COLS.map(([, l]) => <th key={l}>{l}</th>)}
-              <th>TOTAL</th>
-            </tr>
-          </thead>
-          <tbody>
-            {res.rankings.map((r) => (
-              <React.Fragment key={r.teamId}>
-                <tr
-                  className={`${r.rank === 1 ? "winner-row" : ""}${myTeam?.id === r.teamId ? " me-row" : ""}`}
-                  style={{ cursor: "pointer" }}
-                  onClick={() => setOpen(open === r.teamId ? null : r.teamId)}
-                >
-                  <td>{r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : r.rank}</td>
-                  <td className="team-name-cell"><span className={`team-pill ${r.teamId}-color`}>{r.teamName}</span></td>
-                  <td>{r.ownerName}</td>
-                  {COLS.map(([k]) => <td key={k}>{r.marks[k].toFixed(1)}</td>)}
-                  <td className="pts-cell">{r.total.toFixed(1)}</td>
-                </tr>
-                {open === r.teamId && (
-                  <tr className="notes-row">
-                    <td colSpan={3 + COLS.length + 1}>
-                      <ul>
-                        {COLS.map(([k, l]) => <li key={k}><b>{l}:</b> {r.notes[k]}</li>)}
-                      </ul>
-                      <button className="btn-small" onClick={() => onOpenTeam(r.teamId)}>View squad</button>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+      <div className="results-tabs">
+        <button className={`tab-btn${activeTab === "results" ? " active" : ""}`} onClick={() => setActiveTab("results")}>🏆 Scoreboard</button>
+        <button className={`tab-btn${activeTab === "analysis" ? " active" : ""}`} onClick={() => setActiveTab("analysis")}>🤖 AI Analysis</button>
+        <button className={`tab-btn${activeTab === "points" ? " active" : ""}`} onClick={() => setActiveTab("points")}>⭐ Points</button>
       </div>
-      <p className="results-foot">Tap a row to see why each mark was given.</p>
 
-      <h3 className="pts-title">⭐ TEAM POINTS</h3>
-      <p className="results-foot">
-        Grade A player = 10 pts · Grade B = 6 · others = 1 — plus real IPL 2026 performance
-        (1 pt per 30 runs, 1 pt per wicket) where stats are published. More Grade A/B players ⇒ more points.
-      </p>
-      <div className="table-scroll">
-        <table className="points-table results-table">
-          <thead><tr><th>#</th><th>Team</th><th>Owner</th><th>Grade A</th><th>Grade B</th><th>Grade pts</th><th>IPL pts</th><th>TOTAL</th></tr></thead>
-          <tbody>
-            {[...room.teams].filter((t) => t.ownerId).sort((a, b) => b.points.total - a.points.total).map((t, i) => (
-              <tr key={t.id} className={myTeam?.id === t.id ? "me-row" : ""}>
-                <td>{i + 1}</td>
-                <td className="team-name-cell"><span className={`team-pill ${t.id}-color`}>{t.name}</span></td>
-                <td>{t.ownerName}</td>
-                <td>{t.points.gradeA}</td><td>{t.points.gradeB}</td>
-                <td>{t.points.grade}</td><td>{t.points.perf}</td>
-                <td className="pts-cell">{t.points.total}</td>
-              </tr>
+      {activeTab === "results" && (
+        <>
+          <p style={{ marginBottom: "12px", color: "var(--text-dim)", fontSize: "0.9rem" }}>
+            Each Playing XI is marked out of 30 — 5 each for batting, spin, fast bowling, overseas players, team balance and middle order.
+          </p>
+          <div className="table-scroll">
+            <table className="points-table results-table">
+              <thead>
+                <tr>
+                  <th>#</th><th>Team</th><th>Owner</th>
+                  {COLS.map(([, l]) => <th key={l}>{l}</th>)}
+                  <th>TOTAL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {res.rankings.map((r) => (
+                  <React.Fragment key={r.teamId}>
+                    <tr
+                      className={`${r.rank === 1 ? "winner-row" : ""}${myTeam?.id === r.teamId ? " me-row" : ""}`}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setOpen(open === r.teamId ? null : r.teamId)}
+                    >
+                      <td>{r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : r.rank}</td>
+                      <td className="team-name-cell"><span className={`team-pill ${r.teamId}-color`}>{r.teamName}</span></td>
+                      <td>{r.ownerName}</td>
+                      {COLS.map(([k]) => <td key={k}>{r.marks[k].toFixed(1)}</td>)}
+                      <td className="pts-cell">{r.total.toFixed(1)}</td>
+                    </tr>
+                    {open === r.teamId && (
+                      <tr className="notes-row">
+                        <td colSpan={3 + COLS.length + 1}>
+                          <ul>
+                            {COLS.map(([k, l]) => <li key={k}><b>{l}:</b> {r.notes[k]}</li>)}
+                          </ul>
+                          <button className="btn-small" onClick={() => onOpenTeam(r.teamId)}>View squad</button>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="results-foot">Tap a row to see why each mark was given.</p>
+        </>
+      )}
+
+      {activeTab === "analysis" && <TeamAnalysisPanel />}
+
+      {activeTab === "points" && (
+        <>
+          <h3 className="pts-title">⭐ TEAM POINTS</h3>
+          <p className="results-foot">
+            Grade A player = 10 pts · Grade B = 6 · others = 1 — plus real IPL 2026 performance
+            (1 pt per 30 runs, 1 pt per wicket) where stats are published.
+          </p>
+          <div className="table-scroll">
+            <table className="points-table results-table">
+              <thead><tr><th>#</th><th>Team</th><th>Owner</th><th>Grade A</th><th>Grade B</th><th>Grade pts</th><th>IPL pts</th><th>TOTAL</th></tr></thead>
+              <tbody>
+                {[...room.teams].filter((t) => t.ownerId).sort((a, b) => b.points.total - a.points.total).map((t, i) => (
+                  <tr key={t.id} className={myTeam?.id === t.id ? "me-row" : ""}>
+                    <td>{i + 1}</td>
+                    <td className="team-name-cell"><span className={`team-pill ${t.id}-color`}>{t.name}</span></td>
+                    <td>{t.ownerName}</td>
+                    <td>{t.points.gradeA}</td><td>{t.points.gradeB}</td>
+                    <td>{t.points.grade}</td><td>{t.points.perf}</td>
+                    <td className="pts-cell">{t.points.total}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Per-team buy analysis in the points tab */}
+          <h3 className="pts-title" style={{ marginTop: 24 }}>🛒 Transfer Market Verdicts</h3>
+          <div className="all-teams-buys">
+            {room.teams.filter((t) => t.ownerId && t.buys).map((t) => (
+              <div key={t.id} className="team-buys-section glass-panel">
+                <h4 style={{ color: t.color || "var(--accent)" }}>
+                  <span className={`team-pill ${t.id}-color`}>{t.name}</span>
+                </h4>
+                <div className="buy-cards-mini">
+                  {t.buys.bestBuy && (
+                    <div className="buy-mini best-buy">
+                      <span className="buy-mini-label">⭐ Best Buy</span>
+                      <span className="buy-mini-name">{t.buys.bestBuy.name}</span>
+                      <span className="buy-mini-price">₹{(t.buys.bestBuy.price||0).toFixed(2)} Cr</span>
+                    </div>
+                  )}
+                  {t.buys.stealBuy && (
+                    <div className="buy-mini steal-buy">
+                      <span className="buy-mini-label">🔥 Steal Buy</span>
+                      <span className="buy-mini-name">{t.buys.stealBuy.name}</span>
+                      <span className="buy-mini-price">₹{(t.buys.stealBuy.price||0).toFixed(2)} Cr</span>
+                    </div>
+                  )}
+                  {t.buys.worstBuy && (
+                    <div className="buy-mini worst-buy">
+                      <span className="buy-mini-label">💸 Worst Buy</span>
+                      <span className="buy-mini-name">{t.buys.worstBuy.name}</span>
+                      <span className="buy-mini-price">₹{(t.buys.worstBuy.price||0).toFixed(2)} Cr</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@
  */
 const crypto = require("crypto");
 const { TEAMS_CONFIG, PLAYERS_DB, LAST_SEASON_MAP } = require("./data");
-const { buildResults, quality, selectBalancedXI, teamPoints } = require("./scoring");
+const { buildResults, quality, selectBalancedXI, teamPoints, buildTeamLeaderboard, computeBuys } = require("./scoring");
 const { IPL_STATS } = require("./iplStats");
 
 // Never let a placeholder like "Batsman 3" into a room.
@@ -712,8 +712,20 @@ class Room {
     this.auction = this._idleAuction();
     // AI: pick the strongest Playing XI for every franchise from the players it bought.
     for (const t of this.humanTeams()) this._aiPickXI(t);
+    // AI: compute the 100-point team analysis leaderboard
+    this._computeTeamAnalysis();
     this.emit("auction:event", { type: "ended", reason, ai: true });
     this.broadcast();
+  }
+
+  _computeTeamAnalysis() {
+    const ownedTeams = this.humanTeams().map((t) => ({
+      id: t.id, name: t.name, full: t.full,
+      purchased: t.purchased,
+      remaining: t.remaining,
+    }));
+    const catalog = this.catalogPayload();
+    this.teamAnalysis = buildTeamLeaderboard(ownedTeams, catalog, 100);
   }
 
   // Rule-based "AI": searches the franchise's own squad for the XI that scores best on the 30-mark
@@ -764,6 +776,8 @@ class Room {
       remaining: t.remaining,
       xi: t.playingEleven.map((id) => this.cat(id)),
     })));
+    // Recompute team analysis with final squads
+    this._computeTeamAnalysis();
     this.status = "results";
     this.emit("auction:event", { type: "results", winnerTeamId: this.results.winnerTeamId });
     this.broadcast();
@@ -807,6 +821,7 @@ class Room {
       minPlayers: MIN_PLAYERS,
       maxPlayers: MAX_PLAYERS,
       results: this.results,
+      teamAnalysis: this.teamAnalysis || null,
       limits: {
         minSquad: MIN_SQUAD, maxSquad: MAX_SQUAD, maxOverseasSquad: MAX_OVERSEAS_SQUAD,
         maxOverseasXI: MAX_OVERSEAS_XI, maxRetentions: MAX_RETENTIONS, minRetentionPrice: MIN_RETENTION_PRICE,
@@ -826,6 +841,10 @@ class Room {
         xiSource: t.xiSource,
         points: teamPoints(t.purchased.map((p) => this.cat(p.playerId))),
         rtmCards: t.rtmCards,
+        // Per-team buy analysis (available after auction ends)
+        buys: (this.status === "ended" || this.status === "results")
+          ? computeBuys(t.purchased.map((pu) => { const cat = this.cat(pu.playerId) || {}; return { ...cat, ...pu, catalogBase: cat.base || pu.base || 0.2 }; }).filter((p) => p.name))
+          : null,
       })),
       auction: {
         phase: a.phase,
